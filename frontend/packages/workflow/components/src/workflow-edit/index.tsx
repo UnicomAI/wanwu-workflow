@@ -464,8 +464,8 @@ export function CreateWorkflowModal({
           label={labels.descLabel}
           placeholder={labels.descPlaceholder}
           initValue={workFlow?.desc}
-          maxCount={600}
-          maxLength={600}
+          maxCount={200}
+          maxLength={200}
           rules={[
             {
               required: true,

@@ -8157,7 +8157,7 @@
   "exterprise_share_link_page_description": "加入{enterprise_name}的工作空间",
   "builtin_tools": "内置工具",
   "custom_tools": "自定义工具",
-  "builtin_skills_wanwu": "Skill广场",
+  "builtin_skills_wanwu": "内置",
   "custom_skills_wanwu": "我创建的",
   "skill_author_wanwu": "作者：",
   "failed": "抱歉，发生了一些错误...",

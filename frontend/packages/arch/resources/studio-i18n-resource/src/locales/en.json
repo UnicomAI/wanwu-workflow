@@ -7155,7 +7155,7 @@
   "export_success_with_type": "Successfully exported {type}",
   "builtin_tools": "Built-in Tools",
   "custom_tools": "Custom Tools",
-  "builtin_skills_wanwu": "Skill Square",
+  "builtin_skills_wanwu": "Built-in",
   "custom_skills_wanwu": "My Created",
   "skill_author_wanwu": "Author: ",
   "failed": "Sorry, some error occurred...",

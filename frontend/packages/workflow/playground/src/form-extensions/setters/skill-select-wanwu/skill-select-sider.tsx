@@ -36,7 +36,7 @@ const tabList = [
   },*/
   {
     key: 'builtin',
-    label: I18n.t('builtin_skills_wanwu', {}, 'Skill广场'),
+    label: I18n.t('builtin_skills_wanwu', {}, '内置'),
   },
   {
     key: 'custom',

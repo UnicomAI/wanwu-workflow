@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -21,16 +20,15 @@ import (
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/entity/vo"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/canvas/convert"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes"
+	wanwu_util "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes/wanwu-util"
 	schema2 "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/schema"
 	"github.com/coze-dev/coze-studio/backend/pkg/logs"
 	"github.com/coze-dev/coze-studio/backend/pkg/safego"
-	"github.com/go-resty/resty/v2"
 )
 
 const (
-	WanWuAgentAPIUrlEnv    = "WANWU_AGENT_API_URL"
-	WanWuSkillDetailUrlEnv = "WANWU_CALLBACK_SKILL_DETAIL_URL"
-	AgentOutputKey         = "output"
+	WanWuAgentAPIUrlEnv = "WANWU_AGENT_API_URL"
+	AgentOutputKey      = "output"
 )
 
 type Config struct {
@@ -139,12 +137,6 @@ type FinalResult struct {
 	SubConversationList []*SubConversation `json:"subConversationList"`
 }
 
-type response struct {
-	Code int64  `json:"code"`
-	Data any    `json:"data"`
-	Msg  string `json:"msg"`
-}
-
 func (c *Config) Adapt(ctx context.Context, n *vo.Node, _ ...nodes.AdaptOption) (*schema2.NodeSchema, error) {
 	ns := &schema2.NodeSchema{
 		Key:     vo.NodeKey(n.ID),
@@ -212,46 +204,32 @@ func (c *Config) setLLMConfig(ctx context.Context, inputs *vo.Inputs, meta *vo.N
 }
 
 func (c *Config) setSkillConfig(ctx context.Context, inputs *vo.Inputs) error {
-	c.SkillToolList = make([]*SkillToolInfo, 0)
-
+	skillIdentities := make([]wanwu_util.SkillIdentity, 0, len(inputs.AgentSkillParams))
 	for _, skillParam := range inputs.AgentSkillParams {
-		info, err := skillRequest(skillParam.SkillId, skillParam.SkillType)
-		if err != nil {
-			return fmt.Errorf("skill request failed: %w", err)
-		}
-		c.SkillToolList = append(c.SkillToolList, info)
+		skillIdentities = append(skillIdentities, wanwu_util.SkillIdentity{
+			SkillID:   skillParam.SkillId,
+			SkillType: skillParam.SkillType,
+		})
+	}
+
+	skillInfos, err := wanwu_util.FetchSkillToolInfoList(ctx, skillIdentities)
+	if err != nil {
+		return fmt.Errorf("skill request failed: %w", err)
+	}
+
+	c.SkillToolList = make([]*SkillToolInfo, 0, len(skillInfos))
+	for _, info := range skillInfos {
+		c.SkillToolList = append(c.SkillToolList, &SkillToolInfo{
+			SkillId:    info.SkillId,
+			SkillType:  SkillType(info.SkillType),
+			Name:       info.Name,
+			Desc:       info.Desc,
+			Avatar:     info.Avatar,
+			ObjectPath: info.ObjectPath,
+		})
 	}
 
 	return nil
-}
-
-func skillRequest(skillId, skillType string) (*SkillToolInfo, error) {
-	rawURL, err := url.JoinPath(os.Getenv(WanWuSkillDetailUrlEnv))
-	if err != nil {
-		return nil, err
-	}
-	var res response
-	var ret SkillToolInfo
-	resp, err := resty.New().SetTimeout(time.Minute).R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader("Accept", "application/json").
-		SetQueryParam("skillId", skillId).
-		SetQueryParam("skillType", skillType).
-		SetResult(&res).Get(rawURL)
-	if err != nil {
-		return nil, fmt.Errorf("request %v err: %v", rawURL, err)
-	}
-	if resp.StatusCode() >= 300 {
-		return nil, fmt.Errorf("request %v http status %v msg: %v", rawURL, resp.StatusCode(), res.Msg)
-	}
-	marshal, err := sonic.Marshal(res.Data)
-	if err != nil {
-		return nil, fmt.Errorf("request %v marshal response body: %v", rawURL, err)
-	}
-	if err = sonic.Unmarshal(marshal, &ret); err != nil {
-		return nil, fmt.Errorf("request %v unmarshal response body: %v", rawURL, err)
-	}
-	return &ret, nil
 }
 
 func llmParamsToLLMParam(params vo.LLMParam) (*vo.LLMParams, error) {

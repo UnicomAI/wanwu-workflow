@@ -39,7 +39,6 @@ const (
 	WanWuMCPGetUrlEnv             = "WANWU_CALLBACK_MCP_GET_URL"
 	WanWuMCPServerGetUrlEnv       = "WANWU_CALLBACK_MCP_SERVER_GET_URL"
 	WanWuWorkflowListSchemaUrlEnv = "WANWU_CALLBACK_WORKFLOW_LIST_SCHEMA_URL"
-	WanWuSkillDetailUrlEnv        = "WANWU_CALLBACK_SKILL_DETAIL_URL"
 	AgentOutputKey                = "output"
 	metaTypeNumber                = "number"
 	metaTypeTime                  = "time"
@@ -401,13 +400,31 @@ func (c *Config) setToolConfig(ctx context.Context, inputs *vo.Inputs) error {
 		}
 	}
 
-	c.ToolParams.SkillToolList = make([]*SkillToolInfo, 0, len(inputs.AgentSkillParams))
+	skillIdentities := make([]wanwu_util.SkillIdentity, 0, len(inputs.AgentSkillParams))
 	for _, skillParam := range inputs.AgentSkillParams {
-		info, err := skillRequest(skillParam.SkillId, skillParam.SkillType)
+		skillIdentities = append(skillIdentities, wanwu_util.SkillIdentity{
+			SkillID:   skillParam.SkillId,
+			SkillType: skillParam.SkillType,
+		})
+	}
+	if len(skillIdentities) > 0 {
+		skillInfos, err := wanwu_util.FetchSkillToolInfoList(ctx, skillIdentities)
 		if err != nil {
 			return fmt.Errorf("skill request failed: %w", err)
 		}
-		c.ToolParams.SkillToolList = append(c.ToolParams.SkillToolList, info)
+		c.ToolParams.SkillToolList = make([]*SkillToolInfo, 0, len(skillInfos))
+		for _, info := range skillInfos {
+			c.ToolParams.SkillToolList = append(c.ToolParams.SkillToolList, &SkillToolInfo{
+				SkillId:    info.SkillId,
+				SkillType:  SkillType(info.SkillType),
+				Name:       info.Name,
+				Desc:       info.Desc,
+				Avatar:     info.Avatar,
+				ObjectPath: info.ObjectPath,
+			})
+		}
+	} else {
+		c.ToolParams.SkillToolList = make([]*SkillToolInfo, 0)
 	}
 
 	return nil
@@ -578,35 +595,6 @@ func toolRequest(toolId, toolType, userApiKey string) (string, *openapi3_util.Au
 		return ret.Schema, apiAuth, nil
 	}
 	return "", nil, errors.New("unsupported tool type")
-}
-
-func skillRequest(skillId, skillType string) (*SkillToolInfo, error) {
-	rawURL, err := url.JoinPath(os.Getenv(WanWuSkillDetailUrlEnv))
-	if err != nil {
-		return nil, err
-	}
-	var res response
-	var ret SkillToolInfo
-	resp, err := resty.New().SetTimeout(time.Minute).R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader("Accept", "application/json").
-		SetQueryParam("skillId", skillId).
-		SetQueryParam("skillType", skillType).
-		SetResult(&res).Get(rawURL)
-	if err != nil {
-		return nil, fmt.Errorf("request %v err: %v", rawURL, err)
-	}
-	if resp.StatusCode() >= 300 {
-		return nil, fmt.Errorf("request %v http status %v msg: %v", rawURL, resp.StatusCode(), res.Msg)
-	}
-	marshal, err := sonic.Marshal(res.Data)
-	if err != nil {
-		return nil, fmt.Errorf("request %v marshal response body: %v", rawURL, err)
-	}
-	if err = sonic.Unmarshal(marshal, &ret); err != nil {
-		return nil, fmt.Errorf("request %v unmarshal response body: %v", rawURL, err)
-	}
-	return &ret, nil
 }
 
 type response struct {

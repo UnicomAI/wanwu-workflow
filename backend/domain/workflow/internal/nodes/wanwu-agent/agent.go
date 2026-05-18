@@ -1,7 +1,6 @@
 package wanwu_agent
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -1101,7 +1100,7 @@ func (a *AgentNode) callAgentService(ctx context.Context, req *AgentChatRequest)
 		return nil, fmt.Errorf("agent service returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	scanner := bufio.NewScanner(resp.Body)
+	scanner := wanwu_util.NewScanner(resp.Body)
 	responseMap := make(map[int]string)
 	eventMap := make(map[int]*SubConversation)
 	var lastSearchList []any
@@ -1243,7 +1242,7 @@ func (a *AgentNode) streamAgentService(ctx context.Context, req *AgentChatReques
 		defer resp.Body.Close()
 		defer writer.Close()
 
-		scanner := bufio.NewScanner(resp.Body)
+		scanner := wanwu_util.NewScanner(resp.Body)
 
 		for scanner.Scan() {
 			line := scanner.Text()

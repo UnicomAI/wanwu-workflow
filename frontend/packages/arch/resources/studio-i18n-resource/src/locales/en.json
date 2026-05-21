@@ -7157,6 +7157,7 @@
   "custom_tools": "Custom Tools",
   "builtin_skills_wanwu": "Built-in",
   "custom_skills_wanwu": "My Created",
+  "acquired_skills_wanwu": "My Added",
   "skill_author_wanwu": "Author: ",
   "failed": "Sorry, some error occurred...",
   "failed_to_establish_connection": "Failed to establish connections",

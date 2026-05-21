@@ -8602,6 +8602,7 @@ export type I18nKeysNoOptionsType =
   | 'custom_tools'
   | 'builtin_skills_wanwu'
   | 'custom_skills_wanwu'
+  | 'acquired_skills_wanwu'
   | 'skill_author_wanwu'
   | 'failed'
   | 'failed_to_establish_connection'

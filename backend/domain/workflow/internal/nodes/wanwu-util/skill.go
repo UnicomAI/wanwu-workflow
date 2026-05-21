@@ -12,11 +12,15 @@ import (
 )
 
 const (
-	WanWuBuiltinSkillListUrlEnv = "WANWU_CALLBACK_BUILTIN_SKILL_LIST_URL"
-	WanWuCustomSkillListUrlEnv  = "WANWU_CALLBACK_CUSTOM_SKILL_LIST_URL"
-	SkillTypeBuiltin            = "builtin"
-	SkillTypeCustom             = "custom"
+	WanWuBuiltinSkillListUrlEnv  = "WANWU_CALLBACK_BUILTIN_SKILL_LIST_URL"
+	WanWuCustomSkillListUrlEnv   = "WANWU_CALLBACK_CUSTOM_SKILL_LIST_URL"
+	WanWuAcquiredSkillListUrlEnv = "WANWU_CALLBACK_ACQUIRED_SKILL_LIST_URL"
+	SkillTypeBuiltin             = "builtin"
+	SkillTypeCustom              = "custom"
+	SkillTypeAcquired            = "acquired"
 )
+
+var supportedSkillTypes = []string{SkillTypeBuiltin, SkillTypeCustom, SkillTypeAcquired}
 
 type SkillIdentity struct {
 	SkillID   string
@@ -67,9 +71,9 @@ func FetchSkillToolInfoList(ctx context.Context, skills []SkillIdentity) ([]*Ski
 		return make([]*SkillToolInfo, 0), nil
 	}
 
-	groupedIDs := map[string][]string{
-		SkillTypeBuiltin: make([]string, 0),
-		SkillTypeCustom:  make([]string, 0),
+	groupedIDs := make(map[string][]string, len(supportedSkillTypes))
+	for _, skillType := range supportedSkillTypes {
+		groupedIDs[skillType] = make([]string, 0)
 	}
 	seen := make(map[string]struct{}, len(skills))
 
@@ -79,7 +83,7 @@ func FetchSkillToolInfoList(ctx context.Context, skills []SkillIdentity) ([]*Ski
 		if skillID == "" {
 			return nil, fmt.Errorf("skillId is empty")
 		}
-		if skillType != SkillTypeBuiltin && skillType != SkillTypeCustom {
+		if !isSupportedSkillType(skillType) {
 			return nil, fmt.Errorf("unsupported skillType %q for skillId %q", skillType, skillID)
 		}
 
@@ -92,7 +96,7 @@ func FetchSkillToolInfoList(ctx context.Context, skills []SkillIdentity) ([]*Ski
 	}
 
 	resultMap := make(map[string]*SkillToolInfo, len(seen))
-	for _, skillType := range []string{SkillTypeBuiltin, SkillTypeCustom} {
+	for _, skillType := range supportedSkillTypes {
 		skillIDs := groupedIDs[skillType]
 		if len(skillIDs) == 0 {
 			continue
@@ -146,7 +150,7 @@ func fetchSkillToolInfoMapByType(ctx context.Context, skillType string, skillIDs
 	if resp.StatusCode() >= 300 {
 		return nil, fmt.Errorf("request %v http status %v msg: %v", rawURL, resp.StatusCode(), respBody.Msg)
 	}
-	if respBody.Code != 0 {
+	if !isSuccessSkillListCode(respBody.Code) {
 		return nil, fmt.Errorf("request %v business code %v msg: %v", rawURL, respBody.Code, respBody.Msg)
 	}
 
@@ -200,6 +204,8 @@ func skillListURL(skillType string) (string, error) {
 		envKey = WanWuBuiltinSkillListUrlEnv
 	case SkillTypeCustom:
 		envKey = WanWuCustomSkillListUrlEnv
+	case SkillTypeAcquired:
+		envKey = WanWuAcquiredSkillListUrlEnv
 	default:
 		return "", fmt.Errorf("unsupported skillType %q", skillType)
 	}
@@ -213,6 +219,19 @@ func skillListURL(skillType string) (string, error) {
 
 func buildSkillKey(skillType, skillID string) string {
 	return skillType + ":" + skillID
+}
+
+func isSupportedSkillType(skillType string) bool {
+	for _, supportedType := range supportedSkillTypes {
+		if skillType == supportedType {
+			return true
+		}
+	}
+	return false
+}
+
+func isSuccessSkillListCode(code int64) bool {
+	return code == 0 || code == 200
 }
 
 func cloneSkillToolInfo(info *SkillToolInfo) *SkillToolInfo {

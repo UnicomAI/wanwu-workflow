@@ -1,7 +1,6 @@
 package wanwu_skill
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -458,7 +457,7 @@ func (s *WanWuSkill) callSkillService(ctx context.Context, req *SkillChatRequest
 		return nil, fmt.Errorf("skill service returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	scanner := bufio.NewScanner(resp.Body)
+	scanner := wanwu_util.NewScanner(resp.Body)
 	responseMap := make(map[int]string)
 	eventMap := make(map[int]*SubConversation)
 	var lastSearchList []any
@@ -599,7 +598,7 @@ func (s *WanWuSkill) streamSkillService(ctx context.Context, req *SkillChatReque
 		defer resp.Body.Close()
 		defer writer.Close()
 
-		scanner := bufio.NewScanner(resp.Body)
+		scanner := wanwu_util.NewScanner(resp.Body)
 
 		for scanner.Scan() {
 			line := scanner.Text()

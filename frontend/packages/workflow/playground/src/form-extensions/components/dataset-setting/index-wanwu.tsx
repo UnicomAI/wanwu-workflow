@@ -40,7 +40,7 @@ const DEFAULT_KEYWORD_PRIORITY = 1;
 const DEFAULT_MAX_HISTORY = 0;
 /** default maximum recall  */
 const DEFAULT_TOP_K = 5;
-const DEFAULT_MATCH_TYPE = MatchType.Semantic;
+const DEFAULT_MATCH_TYPE = MatchType.HybirdPriority;
 
 export interface DataSetSettingProps {
   selectDataSet: any;

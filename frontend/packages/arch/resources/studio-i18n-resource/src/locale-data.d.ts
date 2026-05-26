@@ -16101,6 +16101,7 @@ export type I18nKeysNoOptionsType =
   | 'workflow_list_create_modal_description_rule_required'
   | 'workflow_list_create_modal_footer_cancel'
   | 'workflow_list_create_modal_footer_confirm'
+  | 'name_limit_hint'
   | 'workflow_list_create_modal_name_label'
   | 'workflow_list_create_modal_name_placeholder'
   | 'workflow_list_create_modal_name_rule_reg'

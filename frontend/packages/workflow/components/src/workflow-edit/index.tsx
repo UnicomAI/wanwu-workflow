@@ -29,6 +29,7 @@ import {
   WorkflowMode,
 } from '@coze-workflow/base/api';
 import {
+  WORKFLOW_NAME_MIN_LEN,
   WORKFLOW_NAME_MAX_LEN,
   WORKFLOW_NAME_REGEX,
 } from '@coze-workflow/base';
@@ -431,6 +432,11 @@ export function CreateWorkflowModal({
                 }
                 return true;
               },
+            },
+            {
+              min: WORKFLOW_NAME_MIN_LEN,
+              max: WORKFLOW_NAME_MAX_LEN,
+              message: I18n.t('name_limit_hint'),
             },
             ...nameValidators,
           ]}

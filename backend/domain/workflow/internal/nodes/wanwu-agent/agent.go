@@ -16,11 +16,13 @@ import (
 
 	openapi3_util "github.com/UnicomAI/wanwu/pkg/openapi3-util"
 	"github.com/bytedance/sonic"
+	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/schema"
 	"github.com/coze-dev/coze-studio/backend/application/base/ctxutil"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/entity"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/entity/vo"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/canvas/convert"
+	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/execute"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes"
 	wanwu_util "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes/wanwu-util"
 	schema2 "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/schema"
@@ -938,6 +940,14 @@ func (a *AgentNode) Invoke(ctx context.Context, input map[string]any) (map[strin
 
 	logs.CtxDebugf(ctx, "[AgentNode] Invoke completed successfully with response: %s", finalResult.Response)
 
+	// 添加token统计
+	if finalResult.Usage != nil {
+		logs.CtxInfof(ctx, "[AgentNode] Usage received: %+v", finalResult.Usage)
+		addTokenUsageFromUsage(ctx, finalResult.Usage)
+	} else {
+		logs.CtxWarnf(ctx, "[AgentNode] Usage is nil, no token statistics available")
+	}
+
 	result := make(map[string]any)
 	result[AgentOutputKey] = map[string]any{
 		"response":     finalResult.Response,
@@ -1003,6 +1013,7 @@ type FinalResult struct {
 	SearchList          []any              `json:"searchList"`
 	QAType              int                `json:"qa_type"`
 	SubConversationList []*SubConversation `json:"subConversationList"`
+	Usage               map[string]any     `json:"usage"`
 }
 
 // mapEventTypeToConversationType converts event type to conversation type string
@@ -1022,7 +1033,7 @@ func mapEventTypeToConversationType(eventType int) string {
 }
 
 // buildFinalResult constructs the final result from collected maps
-func buildFinalResult(responseMap map[int]string, eventMap map[int]*SubConversation, lastSearchList []any, lastQAType int) *FinalResult {
+func buildFinalResult(responseMap map[int]string, eventMap map[int]*SubConversation, lastSearchList []any, lastQAType int, lastUsage map[string]any) *FinalResult {
 	var responseList []ResponseItem
 	var lastResponse string
 
@@ -1043,6 +1054,7 @@ func buildFinalResult(responseMap map[int]string, eventMap map[int]*SubConversat
 		SearchList:          lastSearchList,
 		QAType:              lastQAType,
 		SubConversationList: getSubConversationList(eventMap),
+		Usage:               lastUsage,
 	}
 }
 
@@ -1105,6 +1117,7 @@ func (a *AgentNode) callAgentService(ctx context.Context, req *AgentChatRequest)
 	eventMap := make(map[int]*SubConversation)
 	var lastSearchList []any
 	var lastQAType int
+	var lastUsage map[string]any
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -1190,7 +1203,8 @@ func (a *AgentNode) callAgentService(ctx context.Context, req *AgentChatRequest)
 			if sseResp.Finish == 1 {
 				lastSearchList = sseResp.SearchList
 				lastQAType = sseResp.QAType
-				logs.CtxDebugf(ctx, "[AgentNode] Stream finished")
+				lastUsage = sseResp.Usage
+				logs.CtxInfof(ctx, "[AgentNode] Stream finished, Usage: %+v", sseResp.Usage)
 				break
 			}
 		}
@@ -1201,7 +1215,7 @@ func (a *AgentNode) callAgentService(ctx context.Context, req *AgentChatRequest)
 	}
 
 	// 构建最终结果
-	finalResult := buildFinalResult(responseMap, eventMap, lastSearchList, lastQAType)
+	finalResult := buildFinalResult(responseMap, eventMap, lastSearchList, lastQAType, lastUsage)
 	logs.CtxDebugf(ctx, "[AgentNode] Final result: response=%s, subConversations=%d", finalResult.Response, len(finalResult.SubConversationList))
 	return finalResult, nil
 }
@@ -1511,5 +1525,88 @@ func finalResultToMap(result *FinalResult) map[string]any {
 		"searchList":          result.SearchList,
 		"qa_type":             result.QAType,
 		"subConversationList": subConvListAny,
+	}
+}
+
+// addTokenUsageFromUsage extracts token usage from the usage map and adds it to the TokenCollector
+func addTokenUsageFromUsage(ctx context.Context, usage map[string]any) {
+	if usage == nil {
+		logs.CtxWarnf(ctx, "[AgentNode] usage is nil in addTokenUsageFromUsage")
+		return
+	}
+
+	c := execute.GetExeCtx(ctx)
+	if c == nil {
+		logs.CtxWarnf(ctx, "[AgentNode] execute context is nil")
+		return
+	}
+	if c.TokenCollector == nil {
+		logs.CtxWarnf(ctx, "[AgentNode] TokenCollector is nil")
+		return
+	}
+
+	// 尝试从usage中提取token信息
+	// 支持多种可能的字段名
+	var inputTokens, outputTokens int64
+
+	// 尝试获取input_tokens（支持多种键名）
+	inputKeys := []string{"input_tokens", "inputTokens", "prompt_tokens", "promptTokens"}
+	for _, key := range inputKeys {
+		if v, ok := usage[key]; ok {
+			switch tv := v.(type) {
+			case float64:
+				inputTokens = int64(tv)
+			case int64:
+				inputTokens = tv
+			case int:
+				inputTokens = int64(tv)
+			case string:
+				if i, err := strconv.ParseInt(tv, 10, 64); err == nil {
+					inputTokens = i
+				}
+			}
+			if inputTokens > 0 {
+				logs.CtxInfof(ctx, "[AgentNode] Found input tokens from key '%s': %d", key, inputTokens)
+				break
+			}
+		}
+	}
+
+	// 尝试获取output_tokens（支持多种键名）
+	outputKeys := []string{"output_tokens", "outputTokens", "completion_tokens", "completionTokens"}
+	for _, key := range outputKeys {
+		if v, ok := usage[key]; ok {
+			switch tv := v.(type) {
+			case float64:
+				outputTokens = int64(tv)
+			case int64:
+				outputTokens = tv
+			case int:
+				outputTokens = int64(tv)
+			case string:
+				if i, err := strconv.ParseInt(tv, 10, 64); err == nil {
+					outputTokens = i
+				}
+			}
+			if outputTokens > 0 {
+				logs.CtxInfof(ctx, "[AgentNode] Found output tokens from key '%s': %d", key, outputTokens)
+				break
+			}
+		}
+	}
+
+	logs.CtxInfof(ctx, "[AgentNode] Token usage extracted: inputTokens=%d, outputTokens=%d", inputTokens, outputTokens)
+
+	// 如果有有效的token信息，添加到TokenCollector
+	if inputTokens > 0 || outputTokens > 0 {
+		c.TokenCollector.AddTokenUsage(&model.TokenUsage{
+			PromptTokens:     int(inputTokens),
+			CompletionTokens: int(outputTokens),
+			TotalTokens:      int(inputTokens + outputTokens),
+		})
+		logs.CtxInfof(ctx, "[AgentNode] Token usage added to TokenCollector: input=%d, output=%d, total=%d",
+			inputTokens, outputTokens, inputTokens+outputTokens)
+	} else {
+		logs.CtxWarnf(ctx, "[AgentNode] No valid token usage found in usage map: %+v", usage)
 	}
 }

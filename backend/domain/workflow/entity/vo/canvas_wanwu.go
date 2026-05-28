@@ -1,14 +1,18 @@
 package vo
 
+import wanwu_util "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes/wanwu-util"
+
 type WanWuMCPTool struct {
 	McpToolInfoList []*WanWuMCPToolInfo `json:"mcpInfoList"`
 }
 
 type WanWuMCPToolInfo struct {
-	MCPServerURL  string `json:"serverUrl"`
-	ToolName      string `json:"name"`
-	Transport     string `json:"transport"`     // 传输协议: "sse" 或 "streamable"
-	StreamableURL string `json:"streamableUrl"` // Streamable HTTP URL
+	MCPServerURL  string                       `json:"serverUrl"`
+	ToolName      string                       `json:"name"`
+	Transport     string                       `json:"transport"`     // 传输协议: "sse" 或 "streamable"
+	StreamableURL string                       `json:"streamableUrl"` // Streamable HTTP URL
+	ApiAuth       wanwu_util.ApiAuthWebRequest `json:"apiAuth"`       // 鉴权信息
+	Headers       map[string]string            `json:"headers"`       // 请求头
 }
 
 type WanWuGUIParam struct {

@@ -349,6 +349,8 @@ func (c *Config) setToolConfig(ctx context.Context, inputs *vo.Inputs) error {
 				URL:          result.URL,
 				Transport:    result.Transport,
 				ToolNameList: make([]string, 0),
+				ApiAuth:      result.ApiAuth,
+				Headers:      result.Headers,
 			}
 			mcpInfoMap[mcpInfo.MCPID] = info
 		}
@@ -430,9 +432,11 @@ func (c *Config) setToolConfig(ctx context.Context, inputs *vo.Inputs) error {
 }
 
 type MCPInfo struct {
-	SSEURL        string `json:"sseUrl"`
-	StreamableURL string `json:"streamableUrl"`
-	Transport     string `json:"transport"`
+	SSEURL        string                       `json:"sseUrl"`
+	StreamableURL string                       `json:"streamableUrl"`
+	Transport     string                       `json:"transport"`
+	ApiAuth       wanwu_util.ApiAuthWebRequest `json:"apiAuth"` // api身份认证
+	Headers       map[string]string            `json:"headers"` // 请求头
 }
 
 type MCPServerDetail struct {
@@ -444,6 +448,8 @@ type MCPServerDetail struct {
 type MCPRequestResult struct {
 	URL       string
 	Transport string
+	ApiAuth   *wanwu_util.ApiAuthWebRequest // api身份认证
+	Headers   map[string]string             // 请求头
 }
 
 func mcpRequest(id, mcpType string) (*MCPRequestResult, error) {
@@ -474,7 +480,7 @@ func mcpRequest(id, mcpType string) (*MCPRequestResult, error) {
 			return nil, fmt.Errorf("request %v unmarshal response body: %v", url, err)
 		}
 		// 根据 transport 类型选择正确的 URL
-		mcpReq, err := selectMCPUrl(ret.SSEURL, ret.StreamableURL, ret.Transport)
+		mcpReq, err := selectMCPUrl(ret.SSEURL, ret.StreamableURL, ret.Transport, &ret.ApiAuth, ret.Headers)
 		if err != nil {
 			return nil, fmt.Errorf("request %v err: %v", url, err)
 		}
@@ -506,7 +512,7 @@ func mcpRequest(id, mcpType string) (*MCPRequestResult, error) {
 			return nil, fmt.Errorf("request %v unmarshal response body: %v", url, err)
 		}
 		// 根据 transport 类型选择正确的 URL
-		mcpReq, err := selectMCPUrl(ret.SSEURL, ret.StreamableURL, ret.Transport)
+		mcpReq, err := selectMCPUrl(ret.SSEURL, ret.StreamableURL, ret.Transport, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("request %v err: %v", url, err)
 		}
@@ -516,12 +522,12 @@ func mcpRequest(id, mcpType string) (*MCPRequestResult, error) {
 }
 
 // selectMCPUrl 根据 transport 类型选择正确的 URL
-func selectMCPUrl(sseUrl, streamableUrl, transport string) (*MCPRequestResult, error) {
+func selectMCPUrl(sseUrl, streamableUrl, transport string, auth *wanwu_util.ApiAuthWebRequest, headers map[string]string) (*MCPRequestResult, error) {
 	switch transport {
 	case MCPTransportStreamable:
-		return &MCPRequestResult{URL: streamableUrl, Transport: MCPTransportStreamable}, nil
+		return &MCPRequestResult{URL: streamableUrl, Transport: MCPTransportStreamable, ApiAuth: auth, Headers: headers}, nil
 	case MCPTransportSSE:
-		return &MCPRequestResult{URL: sseUrl, Transport: MCPTransportSSE}, nil
+		return &MCPRequestResult{URL: sseUrl, Transport: MCPTransportSSE, ApiAuth: auth, Headers: headers}, nil
 	default:
 		return nil, fmt.Errorf("unsupported mcp transport %v", transport)
 	}
@@ -855,9 +861,11 @@ type PluginToolInfo struct {
 }
 
 type MCPToolInfo struct {
-	URL          string   `json:"url"`
-	Transport    string   `json:"transport"`
-	ToolNameList []string `json:"toolNameList"` // MCP工具方法列表,会根据此方法名的列表进行mcp方法的过滤，如果此列为空，则标识不进行过滤
+	URL          string                        `json:"url"`
+	Transport    string                        `json:"transport"`
+	Headers      map[string]string             `json:"headers"`
+	ApiAuth      *wanwu_util.ApiAuthWebRequest `json:"apiAuth"`
+	ToolNameList []string                      `json:"toolNameList"` // MCP工具方法列表,会根据此方法名的列表进行mcp方法的过滤，如果此列为空，则标识不进行过滤
 }
 
 type SkillType string

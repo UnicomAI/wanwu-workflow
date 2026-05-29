@@ -40,7 +40,11 @@ const tabList = [
   },
   {
     key: 'custom',
-    label: I18n.t('custom_skills_wanwu' as any, {}, '我创建的'),
+    label: I18n.t('custom_skills_wanwu', {}, '我创建的'),
+  },
+  {
+    key: 'acquired',
+    label: I18n.t('acquired_skills_wanwu', {}, '我添加的'),
   },
 ];
 

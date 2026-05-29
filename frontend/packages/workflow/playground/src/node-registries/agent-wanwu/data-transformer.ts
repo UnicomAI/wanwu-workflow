@@ -206,7 +206,7 @@ export function transformOnSubmit (value,context: NodeFormContext){
       agentMCPParams.push({
         ...tool,
         mcpId: tool.id,
-        mcpType:'mcp',
+        mcpType: tool.mcpType,
         mcpToolName: tool.name,
         description: tool.description,
       });

@@ -135,7 +135,7 @@ const ChatFlowTestRunHistory = (props: {
             runService.getRTProcessResult({executeId});
           }}
           topSlot={(isChatError?: boolean) => (
-            <TestFormFloatButton isChatError={isChatError}/>
+            null // <TestFormFloatButton isChatError={isChatError}/>
           )}
           defaultText={defaultText}
           {...restProps}

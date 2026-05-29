@@ -35,12 +35,13 @@ export const CONVERSATION_NAME = 'CONVERSATION_NAME';
 /**
  * Workflow name Maximum number of characters
  */
-export const WORKFLOW_NAME_MAX_LEN = 30;
+export const WORKFLOW_NAME_MAX_LEN = 50;
+export const WORKFLOW_NAME_MIN_LEN = 2;
 
 /**
  * workflow naming regular
  */
-export const WORKFLOW_NAME_REGEX = /^[A-Za-z0-9.\u4e00-\u9fa5_-]+$/; // /^[a-zA-Z][a-zA-Z0-9_]{0,63}$/;
+export const WORKFLOW_NAME_REGEX = /^(?!_)[a-zA-Z0-9-_.\u4e00-\u9fa5]+$/; // /^[a-zA-Z][a-zA-Z0-9_]{0,63}$/;
 
 /**
  * Node test ID prefix

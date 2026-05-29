@@ -196,6 +196,7 @@ func init() {
 			PreFillZero:       true,
 			PostFillNil:       true,
 			IncrementalOutput: true,
+			MayUseChatModel:   true,
 		},
 		EnUSName:        "Agent",
 		EnUSDescription: "Call agent service to execute tasks",

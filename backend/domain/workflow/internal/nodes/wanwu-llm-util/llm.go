@@ -1,4 +1,4 @@
-package wanwu_util
+package wanwu_llm_util
 
 import (
 	"context"
@@ -73,13 +73,13 @@ func CreateChatModel(ctx context.Context, llmParams *vo.LLMParams) (modelbuilder
 
 	// chatmodel
 	m, err := chatmodelImpl.NewDefaultFactory().CreateChatModel(ctx, chatmodel.ProtocolOpenAI, &chatmodel.Config{
-		BaseURL:         baseUrl,
-		Model:           llmParams.ModelName,
-		TopP:            topP,
-		Temperature:     temperature,
-		MaxTokens:       maxTokens,
-		EnableThinking:  enableThinking,
-		OpenAI:          &chatmodel.OpenAIConfig{ResponseFormat: &openai.ChatCompletionResponseFormat{Type: responseFormatType}},
+		BaseURL:        baseUrl,
+		Model:          llmParams.ModelName,
+		TopP:           topP,
+		Temperature:    temperature,
+		MaxTokens:      maxTokens,
+		EnableThinking: enableThinking,
+		OpenAI:         &chatmodel.OpenAIConfig{ResponseFormat: &openai.ChatCompletionResponseFormat{Type: responseFormatType}},
 	})
 	if err != nil {
 		return nil, nil, err

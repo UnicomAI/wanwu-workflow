@@ -15,6 +15,7 @@ build-arm64:
 check:
 	go vet ./...
 	go fmt ./...
+	goimports -w -local github.com/UnicomAI/wanwu-workflow .
 	docker run --rm -t -v $(PWD):/app -w /app golangci/golangci-lint:v2.10.1 bash -c 'golangci-lint run -v --timeout 10m'
 
 init:

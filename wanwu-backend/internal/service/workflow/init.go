@@ -11,9 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/config"
-	crosssearchImpl "github.com/UnicomAI/wanwu-workflow/wanwu-backend/internal/service/crossdomain/impl/search"
-	crossuserImpl "github.com/UnicomAI/wanwu-workflow/wanwu-backend/internal/service/crossdomain/impl/user"
 	"github.com/UnicomAI/wanwu/pkg/log"
 	"github.com/cloudwego/eino/callbacks"
 	coze_app_conversation "github.com/coze-dev/coze-studio/backend/application/conversation"
@@ -54,6 +51,10 @@ import (
 	coze_infra_sqlparser_impl "github.com/coze-dev/coze-studio/backend/infra/sqlparser/impl/sqlparser"
 	coze_infra_storage "github.com/coze-dev/coze-studio/backend/infra/storage"
 	"gorm.io/gorm"
+
+	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/config"
+	crosssearchImpl "github.com/UnicomAI/wanwu-workflow/wanwu-backend/internal/service/crossdomain/impl/search"
+	crossuserImpl "github.com/UnicomAI/wanwu-workflow/wanwu-backend/internal/service/crossdomain/impl/user"
 )
 
 const (

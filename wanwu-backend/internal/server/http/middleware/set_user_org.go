@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 
-	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/config"
 	"github.com/UnicomAI/wanwu/pkg/util"
 	"github.com/cloudwego/hertz/pkg/app"
 	openapi_entity "github.com/coze-dev/coze-studio/backend/domain/openauth/openapiauth/entity"
@@ -11,6 +10,8 @@ import (
 	"github.com/coze-dev/coze-studio/backend/pkg/ctxcache"
 	"github.com/coze-dev/coze-studio/backend/pkg/i18n"
 	"github.com/coze-dev/coze-studio/backend/types/consts"
+
+	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/config"
 )
 
 func SetUserID(ctx context.Context, appCtx *app.RequestContext) {

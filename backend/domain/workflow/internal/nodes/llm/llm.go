@@ -32,9 +32,6 @@ import (
 	"github.com/cloudwego/eino/flow/agent/react"
 	"github.com/cloudwego/eino/schema"
 	callbacks2 "github.com/cloudwego/eino/utils/callbacks"
-	wanwu_util "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes/wanwu-llm-util"
-	"golang.org/x/exp/maps"
-
 	workflow3 "github.com/coze-dev/coze-studio/backend/api/model/workflow"
 	"github.com/coze-dev/coze-studio/backend/bizpkg/config/modelmgr"
 	"github.com/coze-dev/coze-studio/backend/bizpkg/llm/modelbuilder"
@@ -48,6 +45,7 @@ import (
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/canvas/convert"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/execute"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes"
+	wanwu_llm_util "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes/wanwu-llm-util"
 	schema2 "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/schema"
 	wrapPlugin "github.com/coze-dev/coze-studio/backend/domain/workflow/plugin"
 	"github.com/coze-dev/coze-studio/backend/pkg/ctxcache"
@@ -57,6 +55,7 @@ import (
 	"github.com/coze-dev/coze-studio/backend/pkg/safego"
 	"github.com/coze-dev/coze-studio/backend/pkg/sonic"
 	"github.com/coze-dev/coze-studio/backend/types/errno"
+	"golang.org/x/exp/maps"
 )
 
 type contextKey string
@@ -399,7 +398,7 @@ func (c *Config) Build(ctx context.Context, ns *schema2.NodeSchema, _ ...schema2
 
 	// 替换crossmodelmgr -> chatmodel factory
 	// chatModel, info, err = modelbuilder.BuildModelByID(ctx, c.LLMParams.ModelType, c.LLMParams.ToModelBuilderLLMParams())
-	chatModel, info, err = wanwu_util.CreateChatModel(ctx, c.LLMParams)
+	chatModel, info, err = wanwu_llm_util.CreateChatModel(ctx, c.LLMParams)
 	if err != nil {
 		return nil, err
 	}
@@ -410,7 +409,7 @@ func (c *Config) Build(ctx context.Context, ns *schema2.NodeSchema, _ ...schema2
 		if backupModelParams != nil {
 			// 替换crossmodelmgr -> chatmodel factory
 			// fallbackM, fallbackI, err = modelbuilder.BuildModelByID(ctx, backupModelParams.ModelType, backupModelParams.ToModelBuilderLLMParams())
-			fallbackM, fallbackI, err = wanwu_util.CreateChatModel(ctx, backupModelParams)
+			fallbackM, fallbackI, err = wanwu_llm_util.CreateChatModel(ctx, backupModelParams)
 			if err != nil {
 				return nil, err
 			}

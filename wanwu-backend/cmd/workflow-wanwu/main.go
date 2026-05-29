@@ -10,10 +10,6 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/config"
-	wanwu_http "github.com/UnicomAI/wanwu-workflow/wanwu-backend/internal/server/http"
-	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/internal/service/workflow"
-	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/pkg/redis"
 	"github.com/UnicomAI/wanwu/pkg/db"
 	jwt_util "github.com/UnicomAI/wanwu/pkg/jwt-util"
 	"github.com/UnicomAI/wanwu/pkg/log"
@@ -22,6 +18,11 @@ import (
 	"github.com/coze-dev/coze-studio/backend/pkg/logs"
 	"github.com/coze-dev/coze-studio/backend/pkg/safego"
 	"github.com/coze-dev/coze-studio/backend/types/consts"
+
+	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/config"
+	wanwu_http "github.com/UnicomAI/wanwu-workflow/wanwu-backend/internal/server/http"
+	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/internal/service/workflow"
+	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/pkg/redis"
 )
 
 var (

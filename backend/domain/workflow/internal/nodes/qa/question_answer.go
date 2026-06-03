@@ -27,14 +27,13 @@ import (
 
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
-
 	"github.com/coze-dev/coze-studio/backend/bizpkg/llm/modelbuilder"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/entity"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/entity/vo"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/canvas/convert"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes"
-	wanwu_util "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes/wanwu-util"
+	wanwu_llm_util "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes/wanwu-llm-util"
 	schema2 "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/schema"
 	"github.com/coze-dev/coze-studio/backend/pkg/lang/ptr"
 	"github.com/coze-dev/coze-studio/backend/pkg/lang/ternary"
@@ -236,7 +235,7 @@ func (c *Config) Build(ctx context.Context, ns *schema2.NodeSchema, _ ...schema2
 	if c.LLMParams != nil {
 		// 替换crossmodelmgr -> chatmodel factory
 		// m, _, err = modelbuilder.BuildModelByID(ctx, c.LLMParams.ModelType, c.LLMParams.ToModelBuilderLLMParams())
-		m, _, err = wanwu_util.CreateChatModel(ctx, c.LLMParams)
+		m, _, err = wanwu_llm_util.CreateChatModel(ctx, c.LLMParams)
 		if err != nil {
 			return nil, err
 		}

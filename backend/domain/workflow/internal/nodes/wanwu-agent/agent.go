@@ -1,7 +1,6 @@
 package wanwu_agent
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -17,11 +16,13 @@ import (
 
 	openapi3_util "github.com/UnicomAI/wanwu/pkg/openapi3-util"
 	"github.com/bytedance/sonic"
+	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/schema"
 	"github.com/coze-dev/coze-studio/backend/application/base/ctxutil"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/entity"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/entity/vo"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/canvas/convert"
+	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/execute"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes"
 	wanwu_util "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes/wanwu-util"
 	schema2 "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/schema"
@@ -46,6 +47,8 @@ const (
 	MCPTypeMCPServer              = "mcpserver"
 	ToolTypeBuiltIn               = "builtin" // 内置工具
 	ToolTypeCustom                = "custom"  // 自定义工具
+	MCPTransportSSE               = "sse"
+	MCPTransportStreamable        = "streamable"
 )
 
 type Config struct {
@@ -339,15 +342,17 @@ func (c *Config) setToolConfig(ctx context.Context, inputs *vo.Inputs) error {
 	for _, mcpInfo := range inputs.AgentMCPParams {
 		info, exists := mcpInfoMap[mcpInfo.MCPID]
 		if !exists {
-			sseURL, err := mcpRequest(mcpInfo.MCPID, mcpInfo.MCPType)
+			result, err := mcpRequest(mcpInfo.MCPID, mcpInfo.MCPType)
 			if err != nil {
 				return fmt.Errorf("mcp request failed: %w", err)
 			}
 
 			info = &MCPToolInfo{
-				URL:          sseURL,
-				Transport:    "sse",
+				URL:          result.URL,
+				Transport:    result.Transport,
 				ToolNameList: make([]string, 0),
+				ApiAuth:      result.ApiAuth,
+				Headers:      result.Headers,
 			}
 			mcpInfoMap[mcpInfo.MCPID] = info
 		}
@@ -398,24 +403,63 @@ func (c *Config) setToolConfig(ctx context.Context, inputs *vo.Inputs) error {
 		}
 	}
 
+	skillIdentities := make([]wanwu_util.SkillIdentity, 0, len(inputs.AgentSkillParams))
+	for _, skillParam := range inputs.AgentSkillParams {
+		skillIdentities = append(skillIdentities, wanwu_util.SkillIdentity{
+			SkillID:   skillParam.SkillId,
+			SkillType: skillParam.SkillType,
+		})
+	}
+	if len(skillIdentities) > 0 {
+		skillInfos, err := wanwu_util.FetchSkillToolInfoList(ctx, skillIdentities)
+		if err != nil {
+			return fmt.Errorf("skill request failed: %w", err)
+		}
+		c.ToolParams.SkillToolList = make([]*SkillToolInfo, 0, len(skillInfos))
+		for _, info := range skillInfos {
+			c.ToolParams.SkillToolList = append(c.ToolParams.SkillToolList, &SkillToolInfo{
+				SkillId:    info.SkillId,
+				SkillType:  SkillType(info.SkillType),
+				Name:       info.Name,
+				Desc:       info.Desc,
+				Avatar:     info.Avatar,
+				ObjectPath: info.ObjectPath,
+			})
+		}
+	} else {
+		c.ToolParams.SkillToolList = make([]*SkillToolInfo, 0)
+	}
+
 	return nil
 }
 
 type MCPInfo struct {
-	SSEURL string `json:"sseUrl"`
+	SSEURL        string                       `json:"sseUrl"`
+	StreamableURL string                       `json:"streamableUrl"`
+	Transport     string                       `json:"transport"`
+	ApiAuth       wanwu_util.ApiAuthWebRequest `json:"apiAuth"` // api身份认证
+	Headers       map[string]string            `json:"headers"` // 请求头
 }
 
 type MCPServerDetail struct {
 	SSEURL        string `json:"sseUrl"`
 	StreamableURL string `json:"streamableUrl"`
+	Transport     string `json:"transport"`
 }
 
-func mcpRequest(id, mcpType string) (string, error) {
+type MCPRequestResult struct {
+	URL       string
+	Transport string
+	ApiAuth   *wanwu_util.ApiAuthWebRequest // api身份认证
+	Headers   map[string]string             // 请求头
+}
+
+func mcpRequest(id, mcpType string) (*MCPRequestResult, error) {
 	switch mcpType {
 	case MCPTypeMCP:
 		url, err := url.JoinPath(os.Getenv(WanWuMCPGetUrlEnv))
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		var res response
 		var ret MCPInfo
@@ -425,24 +469,29 @@ func mcpRequest(id, mcpType string) (string, error) {
 			SetQueryParam("mcpId", id).
 			SetResult(&res).Get(url)
 		if err != nil {
-			return "", fmt.Errorf("request %v err: %v", url, err)
+			return nil, fmt.Errorf("request %v err: %v", url, err)
 		}
 		if resp.StatusCode() >= 300 {
-			return "", fmt.Errorf("request %v http status %v msg: %v", url, resp.StatusCode(), res.Msg)
+			return nil, fmt.Errorf("request %v http status %v msg: %v", url, resp.StatusCode(), res.Msg)
 		}
 		marshal, err := sonic.Marshal(res.Data)
 		if err != nil {
-			return "", fmt.Errorf("request %v marshal response body: %v", url, err)
+			return nil, fmt.Errorf("request %v marshal response body: %v", url, err)
 		}
 		if err = sonic.Unmarshal(marshal, &ret); err != nil {
-			return "", fmt.Errorf("request %v unmarshal response body: %v", url, err)
+			return nil, fmt.Errorf("request %v unmarshal response body: %v", url, err)
 		}
-		return ret.SSEURL, nil
+		// 根据 transport 类型选择正确的 URL
+		mcpReq, err := selectMCPUrl(ret.SSEURL, ret.StreamableURL, ret.Transport, &ret.ApiAuth, ret.Headers)
+		if err != nil {
+			return nil, fmt.Errorf("request %v err: %v", url, err)
+		}
+		return mcpReq, nil
 
 	case MCPTypeMCPServer:
 		url, err := url.JoinPath(os.Getenv(WanWuMCPServerGetUrlEnv))
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		var res response
 		var ret MCPServerDetail
@@ -452,21 +501,38 @@ func mcpRequest(id, mcpType string) (string, error) {
 			SetQueryParam("mcpServerId", id).
 			SetResult(&res).Get(url)
 		if err != nil {
-			return "", fmt.Errorf("request %v err: %v", url, err)
+			return nil, fmt.Errorf("request %v err: %v", url, err)
 		}
 		if resp.StatusCode() >= 300 {
-			return "", fmt.Errorf("request %v http status %v msg: %v", url, resp.StatusCode(), res.Msg)
+			return nil, fmt.Errorf("request %v http status %v msg: %v", url, resp.StatusCode(), res.Msg)
 		}
 		marshal, err := sonic.Marshal(res.Data)
 		if err != nil {
-			return "", fmt.Errorf("request %v marshal response body: %v", url, err)
+			return nil, fmt.Errorf("request %v marshal response body: %v", url, err)
 		}
 		if err = sonic.Unmarshal(marshal, &ret); err != nil {
-			return "", fmt.Errorf("request %v unmarshal response body: %v", url, err)
+			return nil, fmt.Errorf("request %v unmarshal response body: %v", url, err)
 		}
-		return ret.SSEURL, nil
+		// 根据 transport 类型选择正确的 URL
+		mcpReq, err := selectMCPUrl(ret.SSEURL, ret.StreamableURL, ret.Transport, nil, nil)
+		if err != nil {
+			return nil, fmt.Errorf("request %v err: %v", url, err)
+		}
+		return mcpReq, nil
 	}
-	return "", errors.New("unsupported mcp type")
+	return nil, errors.New("unsupported mcp type")
+}
+
+// selectMCPUrl 根据 transport 类型选择正确的 URL
+func selectMCPUrl(sseUrl, streamableUrl, transport string, auth *wanwu_util.ApiAuthWebRequest, headers map[string]string) (*MCPRequestResult, error) {
+	switch transport {
+	case MCPTransportStreamable:
+		return &MCPRequestResult{URL: streamableUrl, Transport: MCPTransportStreamable, ApiAuth: auth, Headers: headers}, nil
+	case MCPTransportSSE:
+		return &MCPRequestResult{URL: sseUrl, Transport: MCPTransportSSE, ApiAuth: auth, Headers: headers}, nil
+	default:
+		return nil, fmt.Errorf("unsupported mcp transport %v", transport)
+	}
 }
 
 func toolRequest(toolId, toolType, userApiKey string) (string, *openapi3_util.Auth, error) {
@@ -658,6 +724,9 @@ func llmParamsToLLMParam(params vo.LLMParam) (*vo.LLMParams, error) {
 				return nil, err
 			}
 			p.TopP = &floatVar
+		case "thinkingType":
+			strVal := param.Input.Value.Content.(string)
+			p.ThinkingType = strVal
 		default:
 			logs.Warnf("encountered unknown param when converting LLM Params, name= %s, "+
 				"value= %v", param.Name, param.Input.Value.Content)
@@ -684,10 +753,25 @@ func (c *Config) Build(ctx context.Context, ns *schema2.NodeSchema, _ ...schema2
 		},
 		KnowledgeParams: buildKnowledgeParams(ctx, c.KnowledgeInfos, c.RetrieveParams),
 		ToolParams:      c.ToolParams,
-		HttpClient:      &http.Client{Timeout: 5 * time.Minute},
+		HttpClient: &http.Client{
+			Transport: &http.Transport{
+				ResponseHeaderTimeout: time.Minute,
+			},
+		},
+	}
+	switch c.LLMParams.ThinkingType {
+	case "enabled":
+		agent.ModelParams.EnableThinking = intPtr(1)
+	case "disabled":
+		agent.ModelParams.EnableThinking = intPtr(0)
+	default:
 	}
 
 	return agent, nil
+}
+
+func intPtr(i int) *int {
+	return &i
 }
 
 func float64PtrToFloat32Ptr(src *float64) *float32 {
@@ -754,6 +838,7 @@ type CustomModelInfo struct {
 type ToolParams struct {
 	PluginToolList []*PluginToolInfo `json:"pluginTool,omitempty"`
 	McpToolList    []*MCPToolInfo    `json:"mcpToolList,omitempty"`
+	SkillToolList  []*SkillToolInfo  `json:"skillToolList,omitempty"`
 }
 
 type AgentBaseParams struct {
@@ -769,6 +854,7 @@ type ModelParams struct {
 	FrequencyPenalty *float32 `json:"frequencyPenalty,omitempty"` //频率惩罚
 	PresencePenalty  *float32 `json:"presence_penalty,omitempty"` //存在惩罚
 	MaxTokens        *int     `json:"max_tokens,omitempty"`       //模型输出最大token数
+	EnableThinking   *int     `json:"enable_thinking,omitempty"`  //是否启用思考
 }
 
 type PluginToolInfo struct {
@@ -777,20 +863,47 @@ type PluginToolInfo struct {
 }
 
 type MCPToolInfo struct {
-	URL          string   `json:"url"`
-	Transport    string   `json:"transport"`
-	ToolNameList []string `json:"toolNameList"` // MCP工具方法列表,会根据此方法名的列表进行mcp方法的过滤，如果此列为空，则标识不进行过滤
+	URL          string                        `json:"url"`
+	Transport    string                        `json:"transport"`
+	Headers      map[string]string             `json:"headers"`
+	ApiAuth      *wanwu_util.ApiAuthWebRequest `json:"apiAuth"`
+	ToolNameList []string                      `json:"toolNameList"` // MCP工具方法列表,会根据此方法名的列表进行mcp方法的过滤，如果此列为空，则标识不进行过滤
+}
+
+type SkillType string
+
+type SkillToolInfo struct {
+	SkillId    string    `json:"skillId"`
+	SkillType  SkillType `json:"skillType"`
+	Name       string    `json:"name"`
+	Desc       string    `json:"desc"`
+	Avatar     string    `json:"avatar"`
+	ObjectPath string    `json:"objectPath"`
+}
+
+type EventData struct {
+	Status    int    `json:"status"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Profile   string `json:"profile"`
+	TimeCost  string `json:"timeCost"`
+	ParentID  string `json:"parentId"`
+	Order     int    `json:"order"`
+	EventType int    `json:"eventType"`
 }
 
 type SSEResponse struct {
 	Code           int                    `json:"code"`
 	Message        string                 `json:"message"`
 	Response       string                 `json:"response"`
+	Order          int                    `json:"order"`
+	EventType      int                    `json:"eventType"`
+	EventData      *EventData             `json:"eventData"`
 	GenFileURLList []string               `json:"gen_file_url_list"`
-	History        []interface{}          `json:"history"`
+	History        []any                  `json:"history"`
 	Finish         int                    `json:"finish"`
 	Usage          map[string]interface{} `json:"usage"`
-	SearchList     []interface{}          `json:"search_list"`
+	SearchList     []any                  `json:"search_list"`
 	QAType         int                    `json:"qa_type"`
 }
 
@@ -820,18 +933,34 @@ func (a *AgentNode) Invoke(ctx context.Context, input map[string]any) (map[strin
 	reqBytes, _ := json.Marshal(req)
 	logs.CtxDebugf(ctx, "[AgentNode] Built invoke request: %s", string(reqBytes))
 
-	response, searchListStr, err := a.callAgentService(ctx, req)
+	finalResult, err := a.callAgentService(ctx, req)
 	if err != nil {
 		logs.CtxErrorf(ctx, "[AgentNode] Call agent service failed: %v", err)
 		return nil, err
 	}
 
-	logs.CtxDebugf(ctx, "[AgentNode] Invoke completed successfully with result: %s", response)
+	// 构建兼容格式的输出
+	var searchListStr string
+	if len(finalResult.SearchList) > 0 {
+		searchListBytes, _ := json.Marshal(finalResult.SearchList)
+		searchListStr = string(searchListBytes)
+	}
+
+	logs.CtxDebugf(ctx, "[AgentNode] Invoke completed successfully with response: %s", finalResult.Response)
+
+	// 添加token统计
+	if finalResult.Usage != nil {
+		logs.CtxInfof(ctx, "[AgentNode] Usage received: %+v", finalResult.Usage)
+		addTokenUsageFromUsage(ctx, finalResult.Usage)
+	} else {
+		logs.CtxWarnf(ctx, "[AgentNode] Usage is nil, no token statistics available")
+	}
 
 	result := make(map[string]any)
 	result[AgentOutputKey] = map[string]any{
-		"response":   response,
-		"searchList": searchListStr,
+		"response":     finalResult.Response,
+		"searchList":   searchListStr,
+		"fullResponse": finalResultToMap(finalResult),
 	}
 
 	return result, nil
@@ -866,10 +995,105 @@ func (a *AgentNode) Stream(ctx context.Context, input map[string]any) (*schema.S
 	return a.streamAgentService(ctx, req)
 }
 
-func (a *AgentNode) callAgentService(ctx context.Context, req *AgentChatRequest) (string, string, error) {
+// SubConversation represents a single sub-conversation item in the response
+type SubConversation struct {
+	ID               string `json:"id"`
+	Response         string `json:"response"`
+	SearchList       any    `json:"searchList"`
+	ParentID         string `json:"parentId"`
+	Name             string `json:"name"`
+	Profile          string `json:"profile"`
+	TimeCost         string `json:"timeCost"`
+	Status           int    `json:"status"`
+	ConversationType string `json:"conversationType"`
+	Order            int    `json:"order"`
+}
+
+type ResponseItem struct {
+	Response string `json:"response"`
+	Order    int    `json:"order"`
+}
+
+type FinalResult struct {
+	ID                  string             `json:"id"`
+	Response            string             `json:"response"`
+	ResponseList        []ResponseItem     `json:"responseList"`
+	SearchList          []any              `json:"searchList"`
+	QAType              int                `json:"qa_type"`
+	SubConversationList []*SubConversation `json:"subConversationList"`
+	Usage               map[string]any     `json:"usage"`
+}
+
+// mapEventTypeToConversationType converts event type to conversation type string
+func mapEventTypeToConversationType(eventType int) string {
+	switch eventType {
+	case 6:
+		return "agentThink"
+	case 3:
+		return "agentTool"
+	case 2:
+		return "agentKnowledge"
+	case 20:
+		return "subText"
+	default:
+		return ""
+	}
+}
+
+// buildFinalResult constructs the final result from collected maps
+func buildFinalResult(responseMap map[int]string, eventMap map[int]*SubConversation, lastSearchList []any, lastQAType int, lastUsage map[string]any) *FinalResult {
+	var responseList []ResponseItem
+	var lastResponse string
+
+	orders := getSortedOrders(responseMap)
+	for _, order := range orders {
+		response := responseMap[order]
+		responseList = append(responseList, ResponseItem{
+			Response: response,
+			Order:    order,
+		})
+		lastResponse = response // 保留最后一个
+	}
+
+	return &FinalResult{
+		ID:                  "",
+		Response:            lastResponse,
+		ResponseList:        responseList,
+		SearchList:          lastSearchList,
+		QAType:              lastQAType,
+		SubConversationList: getSubConversationList(eventMap),
+		Usage:               lastUsage,
+	}
+}
+
+func getSortedOrders[T any](m map[int]T) []int {
+	orders := make([]int, 0, len(m))
+	for order := range m {
+		orders = append(orders, order)
+	}
+	for i := 0; i < len(orders); i++ {
+		for j := i + 1; j < len(orders); j++ {
+			if orders[i] > orders[j] {
+				orders[i], orders[j] = orders[j], orders[i]
+			}
+		}
+	}
+	return orders
+}
+
+// getSubConversationList extracts sub-conversation items from eventMap
+func getSubConversationList(eventMap map[int]*SubConversation) []*SubConversation {
+	items := make([]*SubConversation, 0, len(eventMap))
+	for _, order := range getSortedOrders(eventMap) {
+		items = append(items, eventMap[order])
+	}
+	return items
+}
+
+func (a *AgentNode) callAgentService(ctx context.Context, req *AgentChatRequest) (*FinalResult, error) {
 	reqBody, err := json.Marshal(req)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to marshal request: %w", err)
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	agentURL := os.Getenv(WanWuAgentAPIUrlEnv)
@@ -877,15 +1101,15 @@ func (a *AgentNode) callAgentService(ctx context.Context, req *AgentChatRequest)
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", agentURL, bytes.NewReader(reqBody))
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create HTTP request: %w", err)
+		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Accept", "text/event-stream") // 添加 SSE 接受头
+	httpReq.Header.Set("Accept", "text/event-stream")
 
 	resp, err := a.HttpClient.Do(httpReq)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to send HTTP request: %w", err)
+		return nil, fmt.Errorf("failed to send HTTP request: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -893,20 +1117,21 @@ func (a *AgentNode) callAgentService(ctx context.Context, req *AgentChatRequest)
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return "", "", fmt.Errorf("agent service returned status %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("agent service returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	scanner := bufio.NewScanner(resp.Body)
-	var result strings.Builder
-	var lastSSEResponse *SSEResponse
+	scanner := wanwu_util.NewScanner(resp.Body)
+	responseMap := make(map[int]string)
+	eventMap := make(map[int]*SubConversation)
+	var lastSearchList []any
+	var lastQAType int
+	var lastUsage map[string]any
 
 	for scanner.Scan() {
 		line := scanner.Text()
 		logs.CtxDebugf(ctx, "[AgentNode] Received line: %s", line)
 
-		if strings.HasPrefix(line, "data:") {
-			data := strings.TrimPrefix(line, "data:")
-
+		if data, ok := strings.CutPrefix(line, "data:"); ok {
 			var sseResp SSEResponse
 			if err := json.Unmarshal([]byte(data), &sseResp); err != nil {
 				logs.CtxWarnf(ctx, "[AgentNode] Failed to parse SSE response: %v, data: %s", err, data)
@@ -914,43 +1139,93 @@ func (a *AgentNode) callAgentService(ctx context.Context, req *AgentChatRequest)
 			}
 
 			if sseResp.Code != 0 {
-				return "", "", fmt.Errorf("agent service error: code=%d, message=%s", sseResp.Code, sseResp.Message)
+				return nil, fmt.Errorf("agent service error: code=%d, message=%s", sseResp.Code, sseResp.Message)
 			}
 
-			if sseResp.Response != "" {
-				result.WriteString(sseResp.Response)
-			}
+			if sseResp.EventData == nil {
+				if sseResp.Response != "" {
+					responseMap[sseResp.Order] += sseResp.Response
+				}
+			} else {
+				order := sseResp.EventData.Order
+				if order == 0 {
+					order = sseResp.Order
+				}
+				eventType := sseResp.EventData.EventType
+				if eventType == 0 {
+					eventType = sseResp.EventType
+				}
+				conversationType := mapEventTypeToConversationType(eventType)
 
-			// 保存最后一条SSE响应
-			lastSSEResponse = &sseResp
+				var searchListVal any
+				if eventType == 2 && len(sseResp.SearchList) > 0 {
+					searchListBytes, err := json.Marshal(sseResp.SearchList)
+					if err == nil {
+						searchListVal = string(searchListBytes)
+					}
+				}
+
+				subConv, exists := eventMap[order]
+				if !exists {
+					subConv = &SubConversation{
+						ID:               sseResp.EventData.ID,
+						SearchList:       searchListVal,
+						ParentID:         sseResp.EventData.ParentID,
+						Name:             sseResp.EventData.Name,
+						Profile:          sseResp.EventData.Profile,
+						TimeCost:         sseResp.EventData.TimeCost,
+						Status:           sseResp.EventData.Status,
+						ConversationType: conversationType,
+						Order:            order,
+					}
+					eventMap[order] = subConv
+				}
+
+				subConv.Response += sseResp.Response
+				if searchListVal != nil {
+					subConv.SearchList = searchListVal
+				}
+				if sseResp.EventData.Status != 0 {
+					subConv.Status = sseResp.EventData.Status
+				}
+				if subConv.ID == "" {
+					subConv.ID = sseResp.EventData.ID
+				}
+				if subConv.ParentID == "" {
+					subConv.ParentID = sseResp.EventData.ParentID
+				}
+				if subConv.Name == "" {
+					subConv.Name = sseResp.EventData.Name
+				}
+				if subConv.Profile == "" {
+					subConv.Profile = sseResp.EventData.Profile
+				}
+				if subConv.TimeCost == "" {
+					subConv.TimeCost = sseResp.EventData.TimeCost
+				}
+				if subConv.ConversationType == "" {
+					subConv.ConversationType = conversationType
+				}
+			}
 
 			if sseResp.Finish == 1 {
-				logs.CtxDebugf(ctx, "[AgentNode] Stream finished")
+				lastSearchList = sseResp.SearchList
+				lastQAType = sseResp.QAType
+				lastUsage = sseResp.Usage
+				logs.CtxInfof(ctx, "[AgentNode] Stream finished, Usage: %+v", sseResp.Usage)
 				break
 			}
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		return "", "", fmt.Errorf("stream reading error: %w", err)
+		return nil, fmt.Errorf("stream reading error: %w", err)
 	}
 
-	finalResult := result.String()
-	logs.CtxDebugf(ctx, "[AgentNode] Collected complete result: %s", finalResult)
-
-	// 提取最后一条数据的search_list并转换为JSON字符串
-	var searchListJSON string
-	if lastSSEResponse != nil && len(lastSSEResponse.SearchList) > 0 {
-		searchListBytes, err := json.Marshal(lastSSEResponse.SearchList)
-		if err != nil {
-			logs.CtxWarnf(ctx, "[AgentNode] Failed to marshal search_list: %v", err)
-		} else {
-			searchListJSON = string(searchListBytes)
-			logs.CtxDebugf(ctx, "[AgentNode] Extracted search_list: %s", searchListJSON)
-		}
-	}
-
-	return finalResult, searchListJSON, nil
+	// 构建最终结果
+	finalResult := buildFinalResult(responseMap, eventMap, lastSearchList, lastQAType, lastUsage)
+	logs.CtxDebugf(ctx, "[AgentNode] Final result: response=%s, subConversations=%d", finalResult.Response, len(finalResult.SubConversationList))
+	return finalResult, nil
 }
 
 func (a *AgentNode) streamAgentService(ctx context.Context, req *AgentChatRequest) (*schema.StreamReader[map[string]any], error) {
@@ -989,7 +1264,7 @@ func (a *AgentNode) streamAgentService(ctx context.Context, req *AgentChatReques
 		defer resp.Body.Close()
 		defer writer.Close()
 
-		scanner := bufio.NewScanner(resp.Body)
+		scanner := wanwu_util.NewScanner(resp.Body)
 
 		for scanner.Scan() {
 			line := scanner.Text()
@@ -1216,4 +1491,130 @@ func buildValueData(valueType string, value string, condition string) (interface
 		return strconv.ParseInt(value, 10, 64)
 	}
 	return value, nil
+}
+
+// finalResultToMap 将 FinalResult 转换为 map[string]any 格式
+// 这样可以被框架的 convertToObject 正确处理
+func finalResultToMap(result *FinalResult) map[string]any {
+	if result == nil {
+		return nil
+	}
+
+	// 将 ResponseItem 列表转换为 []any
+	var responseListAny []any
+	for _, item := range result.ResponseList {
+		responseListAny = append(responseListAny, map[string]any{
+			"response": item.Response,
+			"order":    item.Order,
+		})
+	}
+
+	// 将 SubConversation 列表转换为 []any
+	var subConvListAny []any
+	for _, subConv := range result.SubConversationList {
+		subConvListAny = append(subConvListAny, map[string]any{
+			"id":               subConv.ID,
+			"response":         subConv.Response,
+			"searchList":       subConv.SearchList,
+			"parentId":         subConv.ParentID,
+			"name":             subConv.Name,
+			"profile":          subConv.Profile,
+			"timeCost":         subConv.TimeCost,
+			"status":           subConv.Status,
+			"conversationType": subConv.ConversationType,
+			"order":            subConv.Order,
+		})
+	}
+
+	return map[string]any{
+		"id":                  result.ID,
+		"response":            result.Response,
+		"responseList":        responseListAny,
+		"searchList":          result.SearchList,
+		"qa_type":             result.QAType,
+		"subConversationList": subConvListAny,
+	}
+}
+
+// addTokenUsageFromUsage extracts token usage from the usage map and adds it to the TokenCollector
+func addTokenUsageFromUsage(ctx context.Context, usage map[string]any) {
+	if usage == nil {
+		logs.CtxWarnf(ctx, "[AgentNode] usage is nil in addTokenUsageFromUsage")
+		return
+	}
+
+	c := execute.GetExeCtx(ctx)
+	if c == nil {
+		logs.CtxWarnf(ctx, "[AgentNode] execute context is nil")
+		return
+	}
+	if c.TokenCollector == nil {
+		logs.CtxWarnf(ctx, "[AgentNode] TokenCollector is nil")
+		return
+	}
+
+	// 尝试从usage中提取token信息
+	// 支持多种可能的字段名
+	var inputTokens, outputTokens int64
+
+	// 尝试获取input_tokens（支持多种键名）
+	inputKeys := []string{"input_tokens", "inputTokens", "prompt_tokens", "promptTokens"}
+	for _, key := range inputKeys {
+		if v, ok := usage[key]; ok {
+			switch tv := v.(type) {
+			case float64:
+				inputTokens = int64(tv)
+			case int64:
+				inputTokens = tv
+			case int:
+				inputTokens = int64(tv)
+			case string:
+				if i, err := strconv.ParseInt(tv, 10, 64); err == nil {
+					inputTokens = i
+				}
+			}
+			if inputTokens > 0 {
+				logs.CtxInfof(ctx, "[AgentNode] Found input tokens from key '%s': %d", key, inputTokens)
+				break
+			}
+		}
+	}
+
+	// 尝试获取output_tokens（支持多种键名）
+	outputKeys := []string{"output_tokens", "outputTokens", "completion_tokens", "completionTokens"}
+	for _, key := range outputKeys {
+		if v, ok := usage[key]; ok {
+			switch tv := v.(type) {
+			case float64:
+				outputTokens = int64(tv)
+			case int64:
+				outputTokens = tv
+			case int:
+				outputTokens = int64(tv)
+			case string:
+				if i, err := strconv.ParseInt(tv, 10, 64); err == nil {
+					outputTokens = i
+				}
+			}
+			if outputTokens > 0 {
+				logs.CtxInfof(ctx, "[AgentNode] Found output tokens from key '%s': %d", key, outputTokens)
+				break
+			}
+		}
+	}
+
+	logs.CtxInfof(ctx, "[AgentNode] Token usage extracted: inputTokens=%d, outputTokens=%d", inputTokens, outputTokens)
+
+	// 如果有有效的token信息，添加到TokenCollector
+	if inputTokens > 0 || outputTokens > 0 {
+		c.TokenCollector.AddTokenUsage(&model.TokenUsage{
+			PromptTokens:     int(inputTokens),
+			CompletionTokens: int(outputTokens),
+			TotalTokens:      int(inputTokens + outputTokens),
+		})
+		logs.CtxInfof(ctx, "[AgentNode] Token usage added to TokenCollector: input=%d, output=%d, total=%d",
+			inputTokens, outputTokens, inputTokens+outputTokens)
+	} else {
+		logs.CtxWarnf(ctx, "[AgentNode] No valid token usage found in usage map: %+v", usage)
+	}
 }

@@ -99,13 +99,23 @@ func ExportWorkFlow(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	// 清理所有节点的用户自定义参数
+	var schemaStr string
 	if err := cleanWorkflowSchema(&schema); err != nil {
 		internalServerErrorResponse(ctx, c, fmt.Errorf("failed to clean workflow schema: %v", err))
 		return
 	}
-	var schemaStr string
-	if schemaStr, err = sonic.MarshalString(schema); err != nil {
+	// HTTP 节点导出后处理：
+	// - authOpen=true 时清空 token 内容；
+	// - 补齐 param.type，避免前端初始化鉴权表单报 undefined。
+	// 这里在 JSON map 层处理，保证保留 wanwu 导出里的原始字段。
+	schemaStr, err = sonic.MarshalString(schema)
+	if err != nil {
 		internalServerErrorResponse(ctx, c, fmt.Errorf("failed to marshal workflow schema string: %v", err))
+		return
+	}
+	schemaStr, err = patchWANWUHTTPAuthForExportInSchemaString(schemaStr)
+	if err != nil {
+		internalServerErrorResponse(ctx, c, fmt.Errorf("failed to patch workflow schema string: %v", err))
 		return
 	}
 	// 创建导出数据
@@ -167,6 +177,92 @@ func cleanNode(node *vo.Node) {
 		cleanQANode(node)
 	case "1013": // 智能体节点
 		cleanAgentNode(node)
+	}
+}
+
+func patchWANWUHTTPAuthForExportInSchemaString(schemaStr string) (string, error) {
+	if schemaStr == "" {
+		return schemaStr, nil
+	}
+	var schemaMap map[string]any
+	if err := sonic.Unmarshal([]byte(schemaStr), &schemaMap); err != nil {
+		return "", err
+	}
+	patchWANWUHTTPAuthForExportInNodes(schemaMap["nodes"])
+	patched, err := sonic.MarshalString(schemaMap)
+	if err != nil {
+		return "", err
+	}
+	return patched, nil
+}
+
+func patchWANWUHTTPAuthForExportInNodes(nodesAny any) {
+	nodes, ok := nodesAny.([]any)
+	if !ok {
+		return
+	}
+	for _, nodeAny := range nodes {
+		node, ok := nodeAny.(map[string]any)
+		if !ok {
+			continue
+		}
+		patchWANWUHTTPAuthForExportInSingleNode(node)
+		patchWANWUHTTPAuthForExportInNodes(node["blocks"])
+	}
+}
+
+func patchWANWUHTTPAuthForExportInSingleNode(node map[string]any) {
+	nodeType, _ := node["type"].(string)
+	if nodeType != "45" {
+		return
+	}
+	data, ok := node["data"].(map[string]any)
+	if !ok {
+		return
+	}
+	inputs, ok := data["inputs"].(map[string]any)
+	if !ok {
+		return
+	}
+	auth, ok := inputs["auth"].(map[string]any)
+	if !ok {
+		return
+	}
+	authOpen, _ := auth["authOpen"].(bool)
+	if !authOpen {
+		return
+	}
+	authData, ok := auth["authData"].(map[string]any)
+	if !ok {
+		return
+	}
+	patchWANWUHTTPAuthForExportInList(authData, "bearerTokenData")
+	patchWANWUHTTPAuthForExportInList(authData, "basicAuthData")
+	if customData, ok := authData["customData"].(map[string]any); ok {
+		patchWANWUHTTPAuthForExportInList(customData, "data")
+	}
+}
+
+func patchWANWUHTTPAuthForExportInList(container map[string]any, listKey string) {
+	items, ok := container[listKey].([]any)
+	if !ok {
+		return
+	}
+	for _, itemAny := range items {
+		param, ok := itemAny.(map[string]any)
+		if !ok {
+			continue
+		}
+		input, ok := param["input"].(map[string]any)
+		if !ok {
+			continue
+		}
+		if inputType, ok := input["type"]; ok {
+			param["type"] = inputType
+		}
+		if value, ok := input["value"].(map[string]any); ok {
+			value["content"] = ""
+		}
 	}
 }
 
@@ -349,6 +445,8 @@ func cleanAgentNode(node *vo.Node) {
 		}
 	}
 
-	// 2. 将agentToolParams置为空数组
-	node.Data.Inputs.AgentToolParams = nil
+	// 2. 将agentToolParams置为空数组（WanWuAgent 可能为空，需防止空指针）
+	if node.Data.Inputs.WanWuAgent != nil {
+		node.Data.Inputs.AgentToolParams = nil
+	}
 }

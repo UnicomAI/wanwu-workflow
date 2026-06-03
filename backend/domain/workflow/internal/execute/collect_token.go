@@ -57,6 +57,11 @@ func (t *TokenCollector) addTokenUsage(usage *model.TokenUsage) {
 	}
 }
 
+// AddTokenUsage exposes addTokenUsage for external use.
+func (t *TokenCollector) AddTokenUsage(usage *model.TokenUsage) {
+	t.addTokenUsage(usage)
+}
+
 func (t *TokenCollector) wait() *model.TokenUsage {
 	t.mu.Lock()
 	defer t.mu.Unlock()

@@ -1,4 +1,4 @@
-package wanwu_util
+package wanwu_llm_util
 
 import (
 	"context"
@@ -19,6 +19,7 @@ import (
 	chatmodel "github.com/coze-dev/coze-studio/backend/bizpkg/llm/wanwu-chatmodel"
 	chatmodelImpl "github.com/coze-dev/coze-studio/backend/bizpkg/llm/wanwu-chatmodel/impl/chatmodel"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/entity/vo"
+	"github.com/coze-dev/coze-studio/backend/pkg/lang/ptr"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -55,14 +56,30 @@ func CreateChatModel(ctx context.Context, llmParams *vo.LLMParams) (modelbuilder
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// 根据 ThinkingType 设置 EnableThinking
+	// 前端传递的字符串: "disabled", "enabled"
+	var enableThinking *bool
+	if llmParams.ThinkingType != "" {
+		switch llmParams.ThinkingType {
+		case "enabled":
+			enableThinking = ptr.Of(true)
+		case "disabled":
+			enableThinking = ptr.Of(false)
+		default:
+			enableThinking = nil
+		}
+	}
+
 	// chatmodel
 	m, err := chatmodelImpl.NewDefaultFactory().CreateChatModel(ctx, chatmodel.ProtocolOpenAI, &chatmodel.Config{
-		BaseURL:     baseUrl,
-		Model:       llmParams.ModelName,
-		TopP:        topP,
-		Temperature: temperature,
-		MaxTokens:   maxTokens,
-		OpenAI:      &chatmodel.OpenAIConfig{ResponseFormat: &openai.ChatCompletionResponseFormat{Type: responseFormatType}},
+		BaseURL:        baseUrl,
+		Model:          llmParams.ModelName,
+		TopP:           topP,
+		Temperature:    temperature,
+		MaxTokens:      maxTokens,
+		EnableThinking: enableThinking,
+		OpenAI:         &chatmodel.OpenAIConfig{ResponseFormat: &openai.ChatCompletionResponseFormat{Type: responseFormatType}},
 	})
 	if err != nil {
 		return nil, nil, err

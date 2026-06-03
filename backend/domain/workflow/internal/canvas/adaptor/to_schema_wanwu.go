@@ -10,6 +10,7 @@ import (
 	wanwu_gui "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes/wanwu-gui"
 	wanwu_mcp "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes/wanwu-mcp"
 	wanwu_qa "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes/wanwu-qa"
+	wanwu_skill "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes/wanwu-skill"
 	wanwu_tool "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes/wanwu-tool"
 )
 
@@ -49,5 +50,9 @@ func RegisterWanwuAllNodeAdaptors() {
 
 	nodes.RegisterNodeAdaptor(entity.NodeTypeWanWuAgent, func() nodes.NodeAdaptor {
 		return &wanwu_agent.Config{}
+	})
+
+	nodes.RegisterNodeAdaptor(entity.NodeTypeWanWuSkill, func() nodes.NodeAdaptor {
+		return &wanwu_skill.Config{}
 	})
 }

@@ -50,6 +50,7 @@ type Service interface {
 	GetWorkflowVersionsByConnector(ctx context.Context, connectorID, workflowID int64, limit int) ([]string, error)
 	GetWorkflowVersionListByWanwu(ctx context.Context, workflowID int64) ([]*vo.VersionInfo, error)
 	UpdateWorkflowVersionDescriptionByWanwu(ctx context.Context, workflowID int64, description string) error
+	MGetWorkflowLatestVersionByWanwu(ctx context.Context, workflowIDs []int64) (map[int64]*vo.VersionInfo, error)
 	Executable
 	AsTool
 
@@ -82,6 +83,7 @@ type Repository interface {
 	GetVersion(ctx context.Context, id int64, version string) (*vo.VersionInfo, bool, error)
 	GetVersionListByWanwu(ctx context.Context, id int64) ([]*vo.VersionInfo, error)
 	UpdateWorkflowVersionDescriptionByWanwu(ctx context.Context, workflowID int64, description string) error
+	MGetWorkflowLatestVersionByWanwu(ctx context.Context, workflowIDs []int64) (map[int64]*vo.VersionInfo, error)
 	GetVersionListByConnectorAndWorkflowID(ctx context.Context, connectorID, workflowID int64, limit int) ([]string, error)
 
 	GetEntity(ctx context.Context, policy *vo.GetPolicy) (*entity.Workflow, error)

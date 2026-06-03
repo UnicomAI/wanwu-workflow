@@ -107,6 +107,12 @@ func openAIBuilder(ctx context.Context, config *chatmodel.Config) (chatmodel.Too
 		cfg.APIVersion = config.OpenAI.APIVersion
 		cfg.ResponseFormat = config.OpenAI.ResponseFormat
 	}
+	if config.EnableThinking != nil {
+		if cfg.ExtraFields == nil {
+			cfg.ExtraFields = make(map[string]any)
+		}
+		cfg.ExtraFields["enable_thinking"] = *config.EnableThinking
+	}
 	return openai.NewChatModel(ctx, cfg)
 }
 

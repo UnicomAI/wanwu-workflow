@@ -3,11 +3,12 @@ package config
 import (
 	"os"
 
-	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/pkg/redis"
 	"github.com/UnicomAI/wanwu/pkg/db"
 	"github.com/UnicomAI/wanwu/pkg/log"
 	"github.com/UnicomAI/wanwu/pkg/util"
 	coze_workflow_config "github.com/coze-dev/coze-studio/backend/domain/workflow/config"
+
+	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/pkg/redis"
 )
 
 var (

@@ -79,6 +79,22 @@ func (w *ApplicationService) OpenAPICreateConversationByWanwu(ctx context.Contex
 		//_       = spaceID
 	)
 
+	// 检查 workflowID 是否存在
+	if req.WorkflowID != nil && *req.WorkflowID != "" {
+		workflowIDInt, parseErr := strconv.ParseInt(*req.WorkflowID, 10, 64)
+		if parseErr != nil {
+			return nil, vo.WrapError(errno.ErrInvalidParameter, fmt.Errorf("invalid workflow_id: %w", parseErr),
+				errorx.KV("workflow_id", *req.WorkflowID))
+		}
+		_, err = GetWorkflowDomainSVC().Get(ctx, &vo.GetPolicy{
+			ID:       workflowIDInt,
+			MetaOnly: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// todo  check permission
 
 	if !req.GetGetOrCreate() {

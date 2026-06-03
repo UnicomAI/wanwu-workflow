@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime/debug"
+	"strconv"
 	"strings"
 
 	"github.com/coze-dev/coze-studio/backend/api/model/base"
@@ -132,7 +133,7 @@ func (w *ApplicationService) GetWorkflowVersionSchemaByWanwu(ctx context.Context
 		if idx := strings.LastIndex(commitID, "_"); idx != -1 && idx < len(commitID)-1 {
 			version = commitID[idx+1:]
 		} else {
-			return nil, fmt.Errorf("invalid commit_id format: %s", req.CommitID)
+			return nil, fmt.Errorf("invalid commit_id format: %s", commitID)
 		}
 		policy = &vo.GetPolicy{
 			ID:      mustParseInt64(req.GetWorkflowID()),
@@ -152,6 +153,54 @@ func (w *ApplicationService) GetWorkflowVersionSchemaByWanwu(ctx context.Context
 			CommitID:   req.GetWorkflowID() + "_" + version,
 		},
 	}, nil
+}
+
+func (w *ApplicationService) MGetWorkflowLatestVersionByWanwu(ctx context.Context, req *MGetWorkflowLatestVersionRequest) (_ *MGetWorkflowLatestVersionResponse, err error) {
+	defer func() {
+		if panicErr := recover(); panicErr != nil {
+			err = safego.NewPanicErr(panicErr, debug.Stack())
+		}
+	}()
+
+	if len(req.WorkflowIDs) == 0 {
+		return &MGetWorkflowLatestVersionResponse{
+			Data: []*WorkflowVersionInfo{},
+			Code: 0,
+			Msg:  "success",
+		}, nil
+	}
+
+	workflowIDs := make([]int64, 0, len(req.WorkflowIDs))
+	for _, id := range req.WorkflowIDs {
+		workflowIDs = append(workflowIDs, mustParseInt64(id))
+	}
+
+	versionMap, err := GetWorkflowDomainSVC().MGetWorkflowLatestVersionByWanwu(ctx, workflowIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	response := &MGetWorkflowLatestVersionResponse{
+		Data: make([]*WorkflowVersionInfo, 0, len(versionMap)),
+		Code: 0,
+		Msg:  "success",
+	}
+
+	for workflowID, v := range versionMap {
+		wfID := strconv.FormatInt(workflowID, 10)
+		if v != nil {
+			response.Data = append(response.Data, &WorkflowVersionInfo{
+				WorkflowID:         wfID,
+				Version:            v.Version,
+				VersionDescription: v.VersionDescription,
+				CreatedAt:          v.VersionCreatedAt.UnixMilli(),
+				CommitID:           wfID + "_" + v.Version,
+				Type:               workflow.OperateType_PublishOperate,
+			})
+		}
+	}
+
+	return response, nil
 }
 
 // --- internal ---
@@ -186,4 +235,23 @@ type RollbackWorkflowVersionRequest struct {
 	WorkflowID string  `thrift:"workflow_id,1,required" form:"workflow_id,required" json:"workflow_id,required" query:"workflow_id,required"`
 	Version    *string `thrift:"version,6,optional" form:"version" json:"version,omitempty" query:"version"`
 	CommitID   string  `thrift:"commit_id,3,optional" form:"commit_id" json:"commit_id,omitempty" query:"commit_id"`
+}
+
+type MGetWorkflowLatestVersionRequest struct {
+	WorkflowIDs []string `thrift:"workflow_ids,1" form:"workflow_ids" json:"workflow_ids" query:"workflow_ids"`
+}
+
+type MGetWorkflowLatestVersionResponse struct {
+	Data []*WorkflowVersionInfo `thrift:"data,1,required" form:"data,required" json:"data,required" query:"data,required"`
+	Code int64                  `thrift:"code,253,required" form:"code,required" json:"code,required" query:"code,required"`
+	Msg  string                 `thrift:"msg,254,required" form:"msg,required" json:"msg,required" query:"msg,required"`
+}
+
+type WorkflowVersionInfo struct {
+	WorkflowID         string               `thrift:"workflow_id,1" form:"workflow_id" json:"workflow_id" query:"workflow_id"`
+	Version            string               `thrift:"version,2" form:"version" json:"version" query:"version"`
+	VersionDescription string               `thrift:"version_description,3" form:"version_description" json:"version_description" query:"version_description"`
+	CreatedAt          int64                `thrift:"created_at,4" form:"created_at" json:"created_at" query:"created_at"`
+	CommitID           string               `thrift:"commit_id,5" form:"commit_id" json:"commit_id" query:"commit_id"`
+	Type               workflow.OperateType `thrift:"type,6" form:"type" json:"type" query:"type"`
 }

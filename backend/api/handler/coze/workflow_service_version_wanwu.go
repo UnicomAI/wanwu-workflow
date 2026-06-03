@@ -83,3 +83,20 @@ func GetHistorySchemaByWanwu(ctx context.Context, c *app.RequestContext) {
 
 	c.JSON(consts.StatusOK, resp)
 }
+
+// MGetWorkflowLatestVersionByWanwu 批量获取工作流最新版本列表
+// @router /api/workflow_api/latest_version_list [POST]
+func MGetWorkflowLatestVersionByWanwu(ctx context.Context, c *app.RequestContext) {
+	var req appworkflow.MGetWorkflowLatestVersionRequest
+	err := c.BindAndValidate(&req)
+	if err != nil {
+		invalidParamRequestResponse(c, err.Error())
+		return
+	}
+	resp, err := appworkflow.SVC.MGetWorkflowLatestVersionByWanwu(ctx, &req)
+	if err != nil {
+		internalServerErrorResponse(ctx, c, err)
+		return
+	}
+	c.JSON(consts.StatusOK, resp)
+}

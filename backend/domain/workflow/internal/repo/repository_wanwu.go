@@ -119,3 +119,72 @@ func (r *RepositoryImpl) UpdateWorkflowVersionDescriptionByWanwu(ctx context.Con
 	}
 	return nil
 }
+
+func (r *RepositoryImpl) MGetWorkflowLatestVersionByWanwu(ctx context.Context, workflowIDs []int64) (_ map[int64]*vo.VersionInfo, err error) {
+	defer func() {
+		if err != nil {
+			err = vo.WrapIfNeeded(errno.ErrDatabaseError, err)
+		}
+	}()
+
+	if len(workflowIDs) == 0 {
+		return make(map[int64]*vo.VersionInfo), nil
+	}
+
+	metas, err := r.query.WorkflowMeta.WithContext(ctx).
+		Where(r.query.WorkflowMeta.ID.In(workflowIDs...)).
+		Select(r.query.WorkflowMeta.ID, r.query.WorkflowMeta.LatestVersion).
+		Find()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get workflow meta for IDs %v: %w", workflowIDs, err)
+	}
+
+	result := make(map[int64]*vo.VersionInfo)
+	if len(metas) == 0 {
+		return result, nil
+	}
+
+	latestVersions := make([]struct {
+		WorkflowID int64
+		Version    string
+	}, 0, len(metas))
+	for _, m := range metas {
+		if m.LatestVersion != "" {
+			latestVersions = append(latestVersions, struct {
+				WorkflowID int64
+				Version    string
+			}{WorkflowID: m.ID, Version: m.LatestVersion})
+		}
+	}
+
+	if len(latestVersions) == 0 {
+		return result, nil
+	}
+
+	versionMap := make(map[int64]string)
+	for _, lv := range latestVersions {
+		versionMap[lv.WorkflowID] = lv.Version
+	}
+
+	wfVersions, err := r.query.WorkflowVersion.WithContext(ctx).
+		Where(r.query.WorkflowVersion.WorkflowID.In(workflowIDs...)).
+		Find()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get workflow versions for IDs %v: %w", workflowIDs, err)
+	}
+
+	for _, wfVersion := range wfVersions {
+		if expectedVersion, ok := versionMap[wfVersion.WorkflowID]; ok && wfVersion.Version == expectedVersion {
+			result[wfVersion.WorkflowID] = &vo.VersionInfo{
+				VersionMeta: &vo.VersionMeta{
+					Version:            wfVersion.Version,
+					VersionDescription: wfVersion.VersionDescription,
+					VersionCreatedAt:   time.UnixMilli(wfVersion.CreatedAt),
+				},
+				CommitID: wfVersion.CommitID,
+			}
+		}
+	}
+
+	return result, nil
+}

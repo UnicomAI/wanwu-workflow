@@ -198,7 +198,7 @@ if __name__ == "__main__":
         sandbox = Sandbox(**config)
 
         if params is not None:
-            code = prefix + f'args={json.dumps(params)}\n' + user_code + suffix
+            code = prefix + f'args = json.loads({json.dumps(json.dumps(params))})\n' + user_code + suffix
         else:
             code = prefix + user_code + suffix
 

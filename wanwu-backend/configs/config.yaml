@@ -157,6 +157,8 @@ icons:
     url: /api/static/icon/icon-Question-Answer.png
   - id: 1013
     url: /api/static/icon/icon-agent.png
+  - id: 1014
+    url: /api/static/icon/icon-skill.png
   - id: 1059
     url: /api/static/icon/icon-from_json.png
 
@@ -168,3 +170,9 @@ workflow:
     SupportThirdPartModules:
       - httpx
       - numpy
+      - requests
+      - pytz
+      - rich
+      - tqdm
+      - joblib
+      - lxml

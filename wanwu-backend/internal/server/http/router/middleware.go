@@ -354,6 +354,10 @@ func _getworkflowversionlistMw() []app.HandlerFunc {
 	return nil
 }
 
+func _getworkflowlatestversionMw() []app.HandlerFunc {
+	return nil
+}
+
 func _updateworkflowversiondescriptionMw() []app.HandlerFunc {
 	return nil
 }

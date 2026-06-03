@@ -26,6 +26,7 @@ import (
 	"github.com/coze-dev/coze-studio/backend/pkg/lang/ternary"
 	"github.com/coze-dev/coze-studio/backend/pkg/logs"
 	"github.com/coze-dev/coze-studio/backend/pkg/safego"
+	"github.com/coze-dev/coze-studio/backend/pkg/sonic"
 	"github.com/coze-dev/coze-studio/backend/types/consts"
 	"github.com/coze-dev/coze-studio/backend/types/errno"
 	"github.com/go-resty/resty/v2"
@@ -187,6 +188,28 @@ func (w *ApplicationService) UpdateWorkflowMetaByWanwu(ctx context.Context, req 
 	})
 	if err != nil {
 		return nil, err
+	}
+	// 转换工作流 -> 对话流时，domain 层 adaptToChatFlow 会经历 vo.Canvas 的反序列化/序列化。
+	// HTTP 节点鉴权参数上的顶层 param.type 不是 vo.Param 的字段，会在这一步被抹掉，
+	// 前端初始化 HTTP 鉴权表单时会报 Unknown variable DTO Type:undefined:undefined。
+	// 这里在 wanwu 侧做一次 schema 回写补齐，避免修改 coze 通用逻辑。
+	if req.IsSetFlowMode() && req.GetFlowMode() == workflow.WorkflowMode_ChatFlow {
+		wfEntity, err := GetWorkflowDomainSVC().Get(ctx, &vo.GetPolicy{
+			ID:    workflowID,
+			QType: workflowModel.FromDraft,
+		})
+		if err != nil {
+			return nil, err
+		}
+		patchedSchema, err := patchWANWUHTTPAuthParamTypeInSchemaString(wfEntity.Canvas)
+		if err != nil {
+			return nil, err
+		}
+		if patchedSchema != wfEntity.Canvas {
+			if err := GetWorkflowDomainSVC().Save(ctx, workflowID, patchedSchema); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	safego.Go(ctx, func() {
@@ -675,6 +698,85 @@ type cozeWorkflowSelectByWanwuResp struct {
 
 type appId struct {
 	AppId string `json:"appId"` // 应用id
+}
+
+func patchWANWUHTTPAuthParamTypeInSchemaString(schemaStr string) (string, error) {
+	if schemaStr == "" {
+		return schemaStr, nil
+	}
+	var schemaMap map[string]any
+	if err := sonic.Unmarshal([]byte(schemaStr), &schemaMap); err != nil {
+		return "", err
+	}
+	patchWANWUHTTPAuthParamTypeInNodes(schemaMap["nodes"])
+	patched, err := sonic.MarshalString(schemaMap)
+	if err != nil {
+		return "", err
+	}
+	return patched, nil
+}
+
+func patchWANWUHTTPAuthParamTypeInNodes(nodesAny any) {
+	nodes, ok := nodesAny.([]any)
+	if !ok {
+		return
+	}
+	for _, nodeAny := range nodes {
+		node, ok := nodeAny.(map[string]any)
+		if !ok {
+			continue
+		}
+		patchWANWUHTTPAuthParamTypeInSingleNode(node)
+		patchWANWUHTTPAuthParamTypeInNodes(node["blocks"])
+	}
+}
+
+func patchWANWUHTTPAuthParamTypeInSingleNode(node map[string]any) {
+	nodeType, _ := node["type"].(string)
+	if nodeType != "45" {
+		return
+	}
+	data, ok := node["data"].(map[string]any)
+	if !ok {
+		return
+	}
+	inputs, ok := data["inputs"].(map[string]any)
+	if !ok {
+		return
+	}
+	auth, ok := inputs["auth"].(map[string]any)
+	if !ok {
+		return
+	}
+	authData, ok := auth["authData"].(map[string]any)
+	if !ok {
+		return
+	}
+	patchWANWUHTTPAuthParamTypeInList(authData, "bearerTokenData")
+	patchWANWUHTTPAuthParamTypeInList(authData, "basicAuthData")
+	if customData, ok := authData["customData"].(map[string]any); ok {
+		patchWANWUHTTPAuthParamTypeInList(customData, "data")
+	}
+}
+
+func patchWANWUHTTPAuthParamTypeInList(container map[string]any, listKey string) {
+	items, ok := container[listKey].([]any)
+	if !ok {
+		return
+	}
+	for _, itemAny := range items {
+		param, ok := itemAny.(map[string]any)
+		if !ok {
+			continue
+		}
+		input, ok := param["input"].(map[string]any)
+		if !ok {
+			continue
+		}
+		if inputType, ok := input["type"]; ok {
+			param["type"] = inputType
+		}
+	}
 }
 
 type GetWorkflowRequest struct {

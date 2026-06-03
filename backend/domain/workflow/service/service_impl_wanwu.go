@@ -33,3 +33,7 @@ func (i *impl) GetWorkflowVersionListByWanwu(ctx context.Context, workflowID int
 func (i *impl) UpdateWorkflowVersionDescriptionByWanwu(ctx context.Context, workflowID int64, versionDescription string) error {
     return i.repo.UpdateWorkflowVersionDescriptionByWanwu(ctx, workflowID, versionDescription)
 }
+
+func (i *impl) MGetWorkflowLatestVersionByWanwu(ctx context.Context, workflowIDs []int64) (map[int64]*vo.VersionInfo, error) {
+    return i.repo.MGetWorkflowLatestVersionByWanwu(ctx, workflowIDs)
+}

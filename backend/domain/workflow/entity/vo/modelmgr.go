@@ -36,6 +36,7 @@ type LLMParams struct {
 	SystemPrompt      string         `json:"systemPrompt"`
 	ResponseFormat    ResponseFormat `json:"responseFormat"`
 	ChatHistoryRound  int64          `json:"chatHistoryRound"`
+	ThinkingType      string         `json:"thinkingType"` // 前端传递字符串: "disabled", "enabled"
 }
 
 type ResponseFormat int64

@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os/exec"
 
 	"github.com/coze-dev/coze-studio/backend/bizpkg/fileutil"
@@ -41,8 +42,9 @@ class Output(dict):
 
 %s
 
+params = json.loads(sys.stdin.read())
 try:
-    result = asyncio.run(main( Args(json.loads(sys.argv[1]))))
+    result = asyncio.run(main(Args(params)))
     print(json.dumps(result))
 except Exception as  e:
     print(f"{type(e).__name__}: {str(e)}", file=sys.stderr)
@@ -78,12 +80,25 @@ func (r *runner) pythonCmdRun(_ context.Context, code string, params map[string]
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal params to json, err: %w", err)
 	}
-	cmd := exec.Command(fileutil.GetPython3Path(), "-c", fmt.Sprintf(pythonCode, code), string(bs)) // ignore_security_alert RCE
+	cmd := exec.Command(fileutil.GetPython3Path(), "-c", fmt.Sprintf(pythonCode, code)) // ignore_security_alert RCE
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
-	err = cmd.Run()
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create stdin pipe, err: %w", err)
+	}
+	if err = cmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start python process, err: %w", err)
+	}
+	if _, err = io.Copy(stdin, bytes.NewReader(bs)); err != nil {
+		return nil, fmt.Errorf("failed to write to stdin, err: %w", err)
+	}
+	if err = stdin.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close stdin, err: %w", err)
+	}
+	err = cmd.Wait()
 	if err != nil {
 		return nil, fmt.Errorf("failed to run python script err: %s, std err: %s", err.Error(), stderr.String())
 	}

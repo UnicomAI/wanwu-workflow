@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/pkg/httputil"
 	jwt_util "github.com/UnicomAI/wanwu/pkg/jwt-util"
 	"github.com/UnicomAI/wanwu/pkg/util"
 	"github.com/cloudwego/hertz/pkg/app"
@@ -18,6 +17,8 @@ import (
 	"github.com/coze-dev/coze-studio/backend/pkg/logs"
 	"github.com/coze-dev/coze-studio/backend/types/consts"
 	"github.com/coze-dev/coze-studio/backend/types/errno"
+
+	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/pkg/httputil"
 )
 
 func JwtUser(ctx context.Context, appCtx *app.RequestContext) {

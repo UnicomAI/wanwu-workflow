@@ -1439,20 +1439,21 @@ export default class MemoryService<T> {
     return this.request({ url, method, params }, options);
   }
 
-  /** GET /use/model/api/v1/mcp/tool/list */
+  /** POST /use/model/api/v1/mcp/tool/list */
   GetMcpToolSelect(
     req?: table.ListMcpToolRequest,
     options?: T,
   ): Promise<table.ListRecordsResponse> {
     const _req = req || {}
     const url = this.genBaseURL('/use/model/api/v1/mcp/tool/list');
-    const method = 'GET';
-    const params = {
+    const method = 'POST';
+    const data = {
       mcpId: _req['mcpId'],
-      serverUrl: _req['serverUrl'],
-      transport: _req['transport'],
+      type: _req['type'],
+      /*serverUrl: _req['serverUrl'],
+      transport: _req['transport'],*/ // 只传上面那两个参数就可以
     };
-    return this.request({ url, method, params }, options);
+    return this.request({ url, method, data }, options);
   }
 
   /**

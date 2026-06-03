@@ -720,6 +720,7 @@ export interface ListDatabaseRecordsResponse {
 
 export interface ListMcpToolRequest {
   mcpId?: string,
+  type?: string,
   serverUrl?: string,
   transport?: string,
 }

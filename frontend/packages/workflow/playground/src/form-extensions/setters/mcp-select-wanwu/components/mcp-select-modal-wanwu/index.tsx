@@ -96,6 +96,7 @@ export const useSelectMcpModal = ({
 
   const fetchMcpToolList = async (reqParams: {
     mcpId?: string;
+    type?: string;
     serverUrl: string;
     transport?: string;
   }) => {
@@ -166,7 +167,7 @@ export const useSelectMcpModal = ({
     // 优先传递 mcpId，后端会根据 mcpId 查询正确的 serverUrl 和 transport
     // 如果没有 mcpId，则传递 serverUrl 和 transport
     if (mcpId || serverUrl) {
-       fetchMcpToolList({ mcpId, serverUrl, transport })
+       fetchMcpToolList({ mcpId, type: currentObj.type || '', serverUrl, transport })
     }
   }
   
@@ -202,7 +203,17 @@ export const useSelectMcpModal = ({
                       workflowAddList?.includes(it.name)
                     )
                   }
-                  onAdd={() => handleAddMcp({...it, serverUrl: item.serverUrl, streamableUrl: item.streamableUrl, transport: item.transport, mcpId: item.mcpId, id: item.mcpId})}
+                  onAdd={() => handleAddMcp({
+                    ...it,
+                    apiAuth: item.apiAuth,
+                    headers: item.headers,
+                    serverUrl: item.serverUrl,
+                    streamableUrl: item.streamableUrl,
+                    transport: item.transport,
+                    mcpId: item.mcpId,
+                    id: item.mcpId,
+                    mcpType: item.type
+                  })}
                   // onRemove={() => handleRemoveMcp(item)}
                   //需要删除的是工具节点，所以根据it.name判断是否删除过
                   onRemove={() => handleRemoveMcp(it)}

@@ -2088,8 +2088,8 @@ importers:
         specifier: 3.7.8
         version: 3.7.8(patch_hash=sa4ddrxdk2yhjzudeck6u5ww3i)(react@18.2.0)
       axios:
-        specifier: ^1.4.0
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
       classnames:
         specifier: ^2.3.2
         version: 2.5.1
@@ -2257,8 +2257,8 @@ importers:
         specifier: 3.7.8
         version: 3.7.8(patch_hash=sa4ddrxdk2yhjzudeck6u5ww3i)(react@18.2.0)
       axios:
-        specifier: ^1.4.0
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
       classnames:
         specifier: ^2.3.2
         version: 2.5.1
@@ -7330,8 +7330,8 @@ importers:
         specifier: workspace:*
         version: link:../idl
       axios:
-        specifier: ^1.4.0
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
       query-string:
         specifier: ^8.1.0
         version: 8.2.0
@@ -7437,8 +7437,8 @@ importers:
         specifier: workspace:*
         version: link:../logger
       axios:
-        specifier: ^1.4.0
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
     devDependencies:
       '@coze-arch/bot-typings':
         specifier: workspace:*
@@ -7859,8 +7859,8 @@ importers:
         specifier: workspace:*
         version: link:../logger
       axios:
-        specifier: ^1.4.0
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
     devDependencies:
       '@coze-arch/bot-typings':
         specifier: workspace:*
@@ -7882,7 +7882,7 @@ importers:
         version: 3.0.9(vitest@3.0.9)
       axios-mock-adapter:
         specifier: ^1.22.0
-        version: 1.22.0(axios@1.10.0)
+        version: 1.22.0(axios@1.17.0)
       debug:
         specifier: 4.3.3
         version: 4.3.3(supports-color@5.5.0)
@@ -8060,8 +8060,8 @@ importers:
         specifier: workspace:*
         version: link:../web-context
       axios:
-        specifier: ^1.4.0
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
     devDependencies:
       '@coze-arch/bot-typings':
         specifier: workspace:*
@@ -9271,8 +9271,8 @@ importers:
         specifier: 3.7.8
         version: 3.7.8(patch_hash=sa4ddrxdk2yhjzudeck6u5ww3i)(react@18.2.0)
       axios:
-        specifier: ^1.4.0
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
       classnames:
         specifier: ^2.3.2
         version: 2.5.1
@@ -9788,8 +9788,8 @@ importers:
         specifier: ~0.1.0
         version: 0.1.0
       axios:
-        specifier: ^1.4.0
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
       eventemitter3:
         specifier: ^5.0.1
         version: 5.0.1
@@ -11783,8 +11783,8 @@ importers:
         specifier: 3.7.8
         version: 3.7.8(patch_hash=sa4ddrxdk2yhjzudeck6u5ww3i)(react@18.2.0)
       axios:
-        specifier: ^1.4.0
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
       classnames:
         specifier: ^2.3.2
         version: 2.5.1
@@ -15693,8 +15693,8 @@ importers:
         specifier: 3.7.8
         version: 3.7.8(patch_hash=sa4ddrxdk2yhjzudeck6u5ww3i)(react@18.2.0)
       axios:
-        specifier: ^1.4.0
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
       classnames:
         specifier: ^2.3.2
         version: 2.5.1
@@ -17959,7 +17959,7 @@ importers:
         version: link:../../workflow/base
       '@coze/api':
         specifier: 1.3.5
-        version: 1.3.5(axios@1.10.0)(debug@4.3.3)
+        version: 1.3.5(axios@1.17.0)(debug@4.3.3)
       ahooks:
         specifier: 3.7.8
         version: 3.7.8(patch_hash=sa4ddrxdk2yhjzudeck6u5ww3i)(react@18.2.0)
@@ -18025,8 +18025,8 @@ importers:
         specifier: ^6.1.11
         version: 6.1.11
       axios:
-        specifier: ^1.7.1
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
       react:
         specifier: 18.2.0
         version: 18.2.0
@@ -18477,8 +18477,8 @@ importers:
         specifier: 3.7.8
         version: 3.7.8(patch_hash=sa4ddrxdk2yhjzudeck6u5ww3i)(react@18.2.0)
       axios:
-        specifier: ^1.4.0
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
       classnames:
         specifier: ^2.3.2
         version: 2.5.1
@@ -19208,8 +19208,8 @@ importers:
         specifier: ~3.0.5
         version: 3.0.9(vitest@3.0.9)
       axios:
-        specifier: ^1.7.1
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
       core-js:
         specifier: ^3.37.1
         version: 3.43.0
@@ -19326,7 +19326,7 @@ importers:
         version: link:../../../arch/slardar-adapter
       '@coze/api':
         specifier: 1.3.5
-        version: 1.3.5(axios@1.10.0)(debug@4.3.3)
+        version: 1.3.5(axios@1.17.0)(debug@4.3.3)
       '@douyinfe/semi-icons':
         specifier: ^2.36.0
         version: 2.81.0(react@18.2.0)
@@ -19334,8 +19334,8 @@ importers:
         specifier: 3.7.8
         version: 3.7.8(patch_hash=sa4ddrxdk2yhjzudeck6u5ww3i)(react@18.2.0)
       axios:
-        specifier: ^1.4.0
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
       classnames:
         specifier: ^2.3.2
         version: 2.5.1
@@ -20353,8 +20353,8 @@ importers:
         specifier: workspace:*
         version: link:../../arch/idl
       axios:
-        specifier: ^1.4.0
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
       eventemitter3:
         specifier: ^5.0.1
         version: 5.0.1
@@ -20622,8 +20622,8 @@ importers:
         specifier: 3.7.8
         version: 3.7.8(patch_hash=sa4ddrxdk2yhjzudeck6u5ww3i)(react@18.2.0)
       axios:
-        specifier: ^1.4.0
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
       classnames:
         specifier: ^2.3.2
         version: 2.5.1
@@ -20958,8 +20958,8 @@ importers:
         specifier: 3.7.8
         version: 3.7.8(patch_hash=sa4ddrxdk2yhjzudeck6u5ww3i)(react@18.2.0)
       axios:
-        specifier: ^1.4.0
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
       classnames:
         specifier: ^2.3.2
         version: 2.5.1
@@ -22488,8 +22488,8 @@ importers:
         specifier: ~8.12.0
         version: 8.12.0
       axios:
-        specifier: ^1.4.0
-        version: 1.10.0(debug@4.3.3)
+        specifier: ^1.16.1
+        version: 1.17.0(debug@4.3.3)
       classnames:
         specifier: ^2.3.2
         version: 2.5.1
@@ -23551,28 +23551,31 @@ packages:
       '@agora-js/report': 4.23.2-1(debug@4.3.3)
       '@agora-js/shared': 4.23.2-1(debug@4.3.3)
       agora-rte-extension: 1.2.4
-      axios: 1.10.0(debug@4.3.3)
+      axios: 1.17.0(debug@4.3.3)
       webrtc-adapter: 8.2.0
     transitivePeerDependencies:
       - debug
+      - supports-color
     dev: false
 
   /@agora-js/report@4.23.2-1(debug@4.3.3):
     resolution: {integrity: sha512-FNDuGb1GKA+J/gBR2oaoArvNnaqXhZV1Si1Qli9GNodrO4SCntz4SSQds7A3BQRMTFTSuQu2tAbkCfJtQBNGuA==}
     dependencies:
       '@agora-js/shared': 4.23.2-1(debug@4.3.3)
-      axios: 1.10.0(debug@4.3.3)
+      axios: 1.17.0(debug@4.3.3)
     transitivePeerDependencies:
       - debug
+      - supports-color
     dev: false
 
   /@agora-js/shared@4.23.2-1(debug@4.3.3):
     resolution: {integrity: sha512-qF0okTndl5mQzfnfV1CymQs3/TY+oxKnnvAxQ/NiJ/Hf/wo+LfgMh2UaJl7xQH5mlhQE8VE2dHMXuU3LpDTbcw==}
     dependencies:
-      axios: 1.10.0(debug@4.3.3)
+      axios: 1.17.0(debug@4.3.3)
       ua-parser-js: 0.7.40
     transitivePeerDependencies:
       - debug
+      - supports-color
     dev: false
 
   /@ahooksjs/use-url-state@3.5.1(react-router@6.30.1)(react@18.2.0):
@@ -26428,7 +26431,7 @@ packages:
       - '@lezer/common'
     dev: false
 
-  /@coze/api@1.3.5(axios@1.10.0)(debug@4.3.3):
+  /@coze/api@1.3.5(axios@1.17.0)(debug@4.3.3):
     resolution: {integrity: sha512-/WA1KXMkUCgCKPdA7PHoSOZVlWCMGpsIqsmIcgW7fKGxLJZm7QEAERS7XX6qwflUN+oGXvKk6r3z4IdS+bdbyA==}
     peerDependencies:
       axios: ^1.7.1
@@ -26436,7 +26439,7 @@ packages:
       agora-extension-ai-denoiser: 1.1.0(agora-rtc-sdk-ng@4.23.2-1)
       agora-rtc-sdk-ng: 4.23.2-1(debug@4.3.3)
       agora-rte-extension: 1.2.4
-      axios: 1.10.0(debug@4.3.3)
+      axios: 1.17.0(debug@4.3.3)
       jsonwebtoken: 9.0.2
       node-fetch: 2.7.0
       opus-encdec: 0.1.1
@@ -26447,6 +26450,7 @@ packages:
       - bufferutil
       - debug
       - encoding
+      - supports-color
       - utf-8-validate
     dev: false
 
@@ -31465,7 +31469,7 @@ packages:
       '@rsdoctor/sdk': 1.0.0-rc.0(@rspack/core@1.3.15)(webpack@5.91.0)
       '@rsdoctor/types': 1.0.0-rc.0(@rspack/core@1.3.15)(webpack@5.91.0)
       '@rsdoctor/utils': 1.0.0-rc.0(@rspack/core@1.3.15)(webpack@5.91.0)
-      axios: 1.10.0(debug@4.3.3)
+      axios: 1.17.0(debug@4.3.3)
       browserslist-load-config: 1.0.0
       enhanced-resolve: 5.12.0
       filesize: 10.1.6
@@ -35625,7 +35629,7 @@ packages:
     resolution: {integrity: sha512-8nneRWKCg3rMtF69nLQJnOYUcbafYeFSjqkw3jCRLsqkWFlHaoQrr5mXmofFGOx3DKn7UfmBMyov8ySvLRVldA==}
     dependencies:
       '@types/node': 18.18.9
-      form-data: 4.0.3
+      form-data: 4.0.5
     dev: true
 
   /@types/node-fetch@2.6.2:
@@ -37362,13 +37366,14 @@ packages:
       '@agora-js/report': 4.23.2-1(debug@4.3.3)
       '@agora-js/shared': 4.23.2-1(debug@4.3.3)
       agora-rte-extension: 1.2.4
-      axios: 1.10.0(debug@4.3.3)
+      axios: 1.17.0(debug@4.3.3)
       formdata-polyfill: 4.0.10
       pako: 2.1.0
       ua-parser-js: 0.7.40
       webrtc-adapter: 8.2.0
     transitivePeerDependencies:
       - debug
+      - supports-color
     dev: false
 
   /agora-rte-extension@1.2.4:
@@ -37888,24 +37893,26 @@ packages:
     engines: {node: '>=4'}
     dev: false
 
-  /axios-mock-adapter@1.22.0(axios@1.10.0):
+  /axios-mock-adapter@1.22.0(axios@1.17.0):
     resolution: {integrity: sha512-dmI0KbkyAhntUR05YY96qg2H6gg0XMl2+qTW0xmYg6Up+BFBAJYRLROMXRdDEL06/Wqwa0TJThAYvFtSFdRCZw==}
     peerDependencies:
       axios: '>= 0.17.0'
     dependencies:
-      axios: 1.10.0(debug@4.3.3)
+      axios: 1.17.0(debug@4.3.3)
       fast-deep-equal: 3.1.3
       is-buffer: 2.0.5
     dev: true
 
-  /axios@1.10.0(debug@4.3.3):
-    resolution: {integrity: sha512-/1xYAC4MP/HEG+3duIhFr4ZQXR4sQXOIe+o6sdqzeykGLx6Upp/1p8MHqhINOvGeP7xyNHe7tsiJByc4SSVUxw==}
+  /axios@1.17.0(debug@4.3.3):
+    resolution: {integrity: sha512-J8SwNxprqqpbfenehxWYXE7CW+wM1BB4w3+N+g+/Wx40xM4rsLrfPmHHxSWIxJLYDgSY/HqlFPIYb2/S3rxafw==}
     dependencies:
-      follow-redirects: 1.15.9(debug@4.3.3)
-      form-data: 4.0.3
-      proxy-from-env: 1.1.0
+      follow-redirects: 1.16.0(debug@4.3.3)
+      form-data: 4.0.5
+      https-proxy-agent: 5.0.1
+      proxy-from-env: 2.1.0
     transitivePeerDependencies:
       - debug
+      - supports-color
 
   /axobject-query@4.1.0:
     resolution: {integrity: sha512-qIj0G9wZbMGNLjLmg1PT6v2mE9AH2zlnADJD/2tC6E00hgmhUOfEB6greHPAfLRSufHqROIUTkw6E+M3lH0PTQ==}
@@ -42498,8 +42505,8 @@ packages:
       - encoding
     dev: false
 
-  /follow-redirects@1.15.9(debug@4.3.3):
-    resolution: {integrity: sha512-gew4GsXizNgdoRyqmyfMHyAmXsZDk6mHkSxZFCzW9gwlbtOW44CDtYavM+y+72qD/Vq2l550kMF52DT8fOLJqQ==}
+  /follow-redirects@1.16.0(debug@4.3.3):
+    resolution: {integrity: sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==}
     engines: {node: '>=4.0'}
     peerDependencies:
       debug: '*'
@@ -42593,6 +42600,17 @@ packages:
 
   /form-data@4.0.3:
     resolution: {integrity: sha512-qsITQPfmvMOSAdeyZ+12I1c+CKSstAFAwu+97zrnWAbIr5u8wfsExUzCesVLC8NgHuRUqNN4Zy6UPWUTRGslcA==}
+    engines: {node: '>= 6'}
+    dependencies:
+      asynckit: 0.4.0
+      combined-stream: 1.0.8
+      es-set-tostringtag: 2.1.0
+      hasown: 2.0.2
+      mime-types: 2.1.35
+    dev: true
+
+  /form-data@4.0.5:
+    resolution: {integrity: sha512-8RipRLol37bNs2bhoV67fiTEvdTrbMUYcFTiy3+wuuOnUog2QBHCZWXDRijWQfAkhBj2Uf5UnVaiWwA5vdd82w==}
     engines: {node: '>= 6'}
     dependencies:
       asynckit: 0.4.0
@@ -43665,7 +43683,7 @@ packages:
     engines: {node: '>=8.0.0'}
     dependencies:
       eventemitter3: 4.0.7
-      follow-redirects: 1.15.9(debug@4.3.3)
+      follow-redirects: 1.16.0(debug@4.3.3)
       requires-port: 1.0.0
     transitivePeerDependencies:
       - debug
@@ -44836,7 +44854,7 @@ packages:
       decimal.js: 10.5.0
       domexception: 4.0.0
       escodegen: 2.1.0
-      form-data: 4.0.3
+      form-data: 4.0.5
       html-encoding-sniffer: 3.0.0
       http-proxy-agent: 5.0.0
       https-proxy-agent: 5.0.1
@@ -49027,6 +49045,11 @@ packages:
 
   /proxy-from-env@1.1.0:
     resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
+    dev: true
+
+  /proxy-from-env@2.1.0:
+    resolution: {integrity: sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==}
+    engines: {node: '>=10'}
 
   /prr@1.0.1:
     resolution: {integrity: sha512-yPw4Sng1gWghHQWj0B3ZggWUm4qVbPwPFcRG8KyxiU7J2OHFSoEHKS+EZ3fv5l1t9CyCiop6l/ZYeWbrgoQejw==}

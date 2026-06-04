@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/coze-dev/coze-studio/backend/api/model/workflow"
 	appworkflow "github.com/coze-dev/coze-studio/backend/application/workflow"
+	"github.com/coze-dev/coze-studio/backend/domain/workflow/entity"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/entity/vo"
 	"github.com/coze-dev/coze-studio/backend/pkg/lang/ptr"
 	"github.com/coze-dev/coze-studio/backend/pkg/logs"
@@ -93,14 +95,30 @@ func OpenAPIRunWorkFlowByWanwu(ctx context.Context, c *app.RequestContext) {
 	if err != nil {
 		var se vo.WorkflowError
 		if errors.As(err, &se) {
-			resp = new(workflow.OpenAPIRunFlowResponse)
-			resp.Code = int64(se.OpenAPICode())
-			resp.Msg = ptr.Of(se.Msg())
-			debugURL := se.DebugURL()
-			if debugURL != "" {
-				resp.DebugUrl = ptr.Of(debugURL)
+			errResp := &wanwuRunFlowErrorResponse{
+				Code: int64(se.OpenAPICode()),
+				Msg:  se.Msg(),
 			}
-			c.JSON(consts.StatusOK, resp)
+
+			// 仅在非 SKIP 模式时，查询失败节点信息
+			if os.Getenv("WANWU_WORKFLOW_OPENAPI_RUN_SKIP_EXECUTE_HISTORY") != "1" {
+				// 从 resp 或 DebugURL 获取 executeID
+				var executeID int64
+				if resp != nil && resp.ExecuteID != nil && *resp.ExecuteID != "" {
+					if exeID, parseErr := strconv.ParseInt(*resp.ExecuteID, 10, 64); parseErr == nil {
+						executeID = exeID
+					}
+				} else {
+					executeID = parseWorkflowExecuteIDFromDebugURL(se.DebugURL())
+				}
+
+				if executeID > 0 {
+					errResp.ExecuteID = strconv.FormatInt(executeID, 10)
+					errResp.FailedNodes = getWorkflowFailedNodes(ctx, executeID)
+				}
+			}
+
+			c.JSON(consts.StatusOK, errResp)
 			return
 		}
 
@@ -182,4 +200,75 @@ func mustParseInt64(s string) int64 {
 		panic(err)
 	}
 	return i
+}
+
+type wanwuRunFlowErrorResponse struct {
+	Code             int64                   `json:"code"`
+	Msg              string                  `json:"msg"`
+	ExecuteID        string                  `json:"execute_id,omitempty"`
+	FailedNodes      []*workflowFailedNode   `json:"failed_nodes,omitempty"`
+}
+
+type workflowFailedNode struct {
+	NodeID     string                `json:"node_id"`
+	NodeName   string                `json:"node_name"`
+	NodeType   string                `json:"node_type"`
+	NodeStatus workflow.NodeExeStatus `json:"node_status"`
+	ErrorInfo  string                `json:"error_info"`
+	ErrorLevel *string               `json:"error_level,omitempty"`
+	Duration   string                `json:"duration"`
+	Input      *string               `json:"input,omitempty"`
+	Output     *string               `json:"output,omitempty"`
+}
+
+// getWorkflowFailedNodes 查询所有失败节点信息（仅非 SKIP 模式有效）
+func getWorkflowFailedNodes(ctx context.Context, executeID int64) []*workflowFailedNode {
+	wfExe, err := appworkflow.GetWorkflowDomainSVC().GetExecution(ctx,
+		&entity.WorkflowExecution{ID: executeID}, true)
+	if err != nil || wfExe == nil {
+		return nil
+	}
+
+	var nodes []*workflowFailedNode
+	for _, nodeExe := range wfExe.NodeExecutions {
+		if nodeExe.Status == entity.NodeFailed && nodeExe.ErrorInfo != nil && *nodeExe.ErrorInfo != "" {
+			node := &workflowFailedNode{
+				NodeID:     nodeExe.NodeID,
+				NodeName:   nodeExe.NodeName,
+				NodeType:   string(nodeExe.NodeType),
+				NodeStatus: workflow.NodeExeStatus(nodeExe.Status),
+				ErrorInfo:  *nodeExe.ErrorInfo,
+				Duration:   nodeExe.Duration.String(),
+				ErrorLevel: nodeExe.ErrorLevel,
+				Input:      nodeExe.Input,
+				Output:     nodeExe.Output,
+			}
+			nodes = append(nodes, node)
+		}
+	}
+
+	return nodes
+}
+
+func parseWorkflowExecuteIDFromDebugURL(debugURL string) int64 {
+	if debugURL == "" {
+		return 0
+	}
+
+	u, err := url.Parse(debugURL)
+	if err != nil {
+		return 0
+	}
+
+	executeIDStr := u.Query().Get("execute_id")
+	if executeIDStr == "" {
+		return 0
+	}
+
+	executeID, err := strconv.ParseInt(executeIDStr, 10, 64)
+	if err != nil {
+		return 0
+	}
+
+	return executeID
 }

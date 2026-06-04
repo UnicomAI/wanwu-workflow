@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-resty/resty/v2"
+	http_client "github.com/coze-dev/coze-studio/backend/pkg/http-client"
 )
 
 const (
@@ -131,7 +131,7 @@ func fetchSkillToolInfoMapByType(ctx context.Context, skillType string, skillIDs
 	}
 
 	reqBody := skillListRequest{SkillIDList: skillIDs}
-	resp, err := resty.New().SetTimeout(time.Minute).R().
+	resp, err := http_client.GetRestyClientWithTimeout(time.Minute).R().
 		SetContext(ctx).
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Accept", "application/json").

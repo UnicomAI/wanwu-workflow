@@ -11,7 +11,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/bytedance/sonic"
 	"github.com/cloudwego/eino/schema"
@@ -21,6 +20,7 @@ import (
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes"
 	wanwu_util "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes/wanwu-util"
 	schema2 "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/schema"
+	http_client "github.com/coze-dev/coze-studio/backend/pkg/http-client"
 	"github.com/coze-dev/coze-studio/backend/pkg/logs"
 	"github.com/coze-dev/coze-studio/backend/pkg/safego"
 )
@@ -320,9 +320,7 @@ func (c *Config) Build(ctx context.Context, ns *schema2.NodeSchema, _ ...schema2
 		},
 		SkillToolList: c.SkillToolList,
 		HttpClient: &http.Client{
-			Transport: &http.Transport{
-				ResponseHeaderTimeout: time.Minute,
-			},
+			Transport: http_client.GetClient().Client.Transport,
 		},
 	}
 	switch c.LLMParams.ThinkingType {

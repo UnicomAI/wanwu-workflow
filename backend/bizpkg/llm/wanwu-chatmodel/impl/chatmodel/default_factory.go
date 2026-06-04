@@ -32,6 +32,7 @@ import (
 	"google.golang.org/genai"
 
 	chatmodel "github.com/coze-dev/coze-studio/backend/bizpkg/llm/wanwu-chatmodel"
+	http_client "github.com/coze-dev/coze-studio/backend/pkg/http-client"
 	"github.com/coze-dev/coze-studio/backend/pkg/lang/ptr"
 )
 
@@ -98,6 +99,7 @@ func openAIBuilder(ctx context.Context, config *chatmodel.Config) (chatmodel.Too
 		Stop:             config.Stop,
 		PresencePenalty:  config.PresencePenalty,
 		FrequencyPenalty: config.FrequencyPenalty,
+		HTTPClient:       http_client.GetClient().Client, // inject trace-enabled HTTP client
 	}
 	if config.MaxCompletionTokens != nil {
 		cfg.MaxCompletionTokens = config.MaxCompletionTokens
@@ -153,11 +155,12 @@ func claudeBuilder(ctx context.Context, config *chatmodel.Config) (chatmodel.Too
 
 func deepseekBuilder(ctx context.Context, config *chatmodel.Config) (chatmodel.ToolCallingChatModel, error) {
 	cfg := &deepseek.ChatModelConfig{
-		APIKey:  config.APIKey,
-		Timeout: config.Timeout,
-		BaseURL: config.BaseURL,
-		Model:   config.Model,
-		Stop:    config.Stop,
+		APIKey:      config.APIKey,
+		Timeout:     config.Timeout,
+		BaseURL:     config.BaseURL,
+		Model:       config.Model,
+		Stop:        config.Stop,
+		HTTPClient:  http_client.GetClient().Client, // inject trace-enabled HTTP client
 	}
 	if config.Temperature != nil {
 		cfg.Temperature = *config.Temperature
@@ -191,6 +194,7 @@ func arkBuilder(ctx context.Context, config *chatmodel.Config) (chatmodel.ToolCa
 		Stop:             config.Stop,
 		FrequencyPenalty: config.FrequencyPenalty,
 		PresencePenalty:  config.PresencePenalty,
+		HTTPClient:       http_client.GetClient().Client, // inject trace-enabled HTTP client
 	}
 	if config.Timeout != 0 {
 		cfg.Timeout = &config.Timeout
@@ -224,7 +228,7 @@ func ollamaBuilder(ctx context.Context, config *chatmodel.Config) (chatmodel.Too
 	cfg := &ollama.ChatModelConfig{
 		BaseURL:    config.BaseURL,
 		Timeout:    config.Timeout,
-		HTTPClient: nil,
+		HTTPClient: http_client.GetClient().Client, // inject trace-enabled HTTP client
 		Model:      config.Model,
 		Format:     nil,
 		KeepAlive:  nil,
@@ -258,6 +262,7 @@ func qwenBuilder(ctx context.Context, config *chatmodel.Config) (chatmodel.ToolC
 		PresencePenalty:  config.PresencePenalty,
 		FrequencyPenalty: config.FrequencyPenalty,
 		EnableThinking:   config.EnableThinking,
+		HTTPClient:       http_client.GetClient().Client, // inject trace-enabled HTTP client
 	}
 	if config.Qwen != nil {
 		cfg.ResponseFormat = config.Qwen.ResponseFormat

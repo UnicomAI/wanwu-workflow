@@ -17,9 +17,9 @@ import (
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes"
 	wanwu_util "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes/wanwu-util"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/schema"
+	http_client "github.com/coze-dev/coze-studio/backend/pkg/http-client"
 	"github.com/coze-dev/coze-studio/backend/pkg/logs"
 	"github.com/coze-dev/coze-studio/backend/pkg/sonic"
-	"github.com/go-resty/resty/v2"
 )
 
 type Config struct {
@@ -28,11 +28,11 @@ type Config struct {
 	ApiAuth   *openapi3_util.Auth
 }
 
-func (c *Config) Adapt(_ context.Context, n *vo.Node, _ ...nodes.AdaptOption) (*schema.NodeSchema, error) {
+func (c *Config) Adapt(ctx context.Context, n *vo.Node, _ ...nodes.AdaptOption) (*schema.NodeSchema, error) {
 	var err error
 	inputs := n.Data.Inputs
 	toolInfo := inputs.WanwuToolParam
-	c.APISchema, c.ApiAuth, err = toolRequest(toolInfo.ToolID, toolInfo.ToolType, toolInfo.ApiKey)
+	c.APISchema, c.ApiAuth, err = toolRequest(ctx, toolInfo.ToolID, toolInfo.ToolType, toolInfo.ApiKey)
 	if err != nil {
 		return nil, fmt.Errorf("tool request err: %v", err)
 	}
@@ -170,8 +170,8 @@ func parseInputParams(input map[string]any) *openapi3_util.RequestParams {
 	return params
 }
 
-// 原有的 toolRequest 函数保持不变
-func toolRequest(toolId, toolType, userApiKey string) (string, *openapi3_util.Auth, error) {
+// toolRequest 获取工具的 schema 和认证信息
+func toolRequest(ctx context.Context, toolId, toolType, userApiKey string) (string, *openapi3_util.Auth, error) {
 	switch toolType {
 	case "custom":
 		url, err := url.JoinPath(os.Getenv("WANWU_CALLBACK_CUSTOM_TOOL_URL"))
@@ -180,7 +180,7 @@ func toolRequest(toolId, toolType, userApiKey string) (string, *openapi3_util.Au
 		}
 		var res response
 		var ret customToolDetail
-		resp, err := resty.New().SetTimeout(time.Minute).R().
+		resp, err := http_client.GetRestyClientWithTimeout(time.Minute).R().SetContext(ctx).
 			SetHeader("Content-Type", "application/json").
 			SetHeader("Accept", "application/json").
 			SetQueryParam("customToolId", toolId).
@@ -211,7 +211,7 @@ func toolRequest(toolId, toolType, userApiKey string) (string, *openapi3_util.Au
 		}
 		var res response
 		var ret toolSquareDetail
-		resp, err := resty.New().SetTimeout(time.Minute).R().
+		resp, err := http_client.GetRestyClientWithTimeout(time.Minute).R().SetContext(ctx).
 			SetHeader("Content-Type", "application/json").
 			SetHeader("Accept", "application/json").
 			SetQueryParam("toolSquareId", toolId).

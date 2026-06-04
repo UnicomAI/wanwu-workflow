@@ -17,6 +17,7 @@ import (
 	coze_minio "github.com/coze-dev/coze-studio/backend/infra/storage/impl/minio"
 	"github.com/coze-dev/coze-studio/backend/pkg/logs"
 	"github.com/coze-dev/coze-studio/backend/pkg/safego"
+	trace_util "github.com/coze-dev/coze-studio/backend/pkg/trace-util"
 	"github.com/coze-dev/coze-studio/backend/types/consts"
 
 	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/config"
@@ -60,6 +61,11 @@ func main() {
 
 	if err := jwt_util.InitUserJWT(config.Cfg().JWT.SigningKey); err != nil {
 		log.Fatalf("init jwt err: %v", err)
+	}
+
+	// init tracer
+	if err := trace_util.InitTracer("workflow-service"); err != nil {
+		log.Fatalf("init tracer err: %v", err)
 	}
 
 	// db

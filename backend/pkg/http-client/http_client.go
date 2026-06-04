@@ -9,6 +9,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/coze-dev/coze-studio/backend/pkg/logs"
+	trace_util "github.com/coze-dev/coze-studio/backend/pkg/trace-util"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	"io"
 	"mime/multipart"
 	"net"
@@ -58,6 +61,17 @@ type HttpClient struct {
 	Client *http.Client
 }
 
+// tracingTransport 是一个自定义的 RoundTripper，在发送请求前注入 trace header
+type tracingTransport struct {
+	base http.RoundTripper
+}
+
+func (t *tracingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// 从 request context 中提取 trace header 并注入到请求中
+	otel.GetTextMapPropagator().Inject(req.Context(), propagation.HeaderCarrier(req.Header))
+	return t.base.RoundTrip(req)
+}
+
 func Create(client *http.Client) *HttpClient {
 	return &HttpClient{client}
 }
@@ -83,13 +97,15 @@ func GetClient() *HttpClient {
 // 为了http连接的复用在启动时做一次初始化，但是请注意如果需要做http请求的绝对隔离可以再创建其他的httpclient
 func newHttpClient() *http.Client {
 	return &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			DialContext: (&net.Dialer{
-				Timeout:   connectTimeout, // 连接超时时间
-				KeepAlive: timeout,        // 连接保持活跃的时间
-			}).DialContext,
-			ResponseHeaderTimeout: timeout,
+		Transport: &tracingTransport{
+			base: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				DialContext: (&net.Dialer{
+					Timeout:   connectTimeout, // 连接超时时间
+					KeepAlive: timeout,        // 连接保持活跃的时间
+				}).DialContext,
+				ResponseHeaderTimeout: timeout,
+			},
 		},
 		Timeout: timeout,
 	}
@@ -376,7 +392,8 @@ func LogRpcJson(ctx context.Context, business string, method string, params inte
 	if err != nil {
 		errMsg = err.Error()
 	}
-	logs.CtxInfof(ctx, "%s|%s|%d|%d|%+v|%+v|%s", business, method, success, time.Now().UnixMilli()-starTimestamp, paramsStr, resultStr, errMsg)
+	traceID := trace_util.GetTraceID(ctx)
+	logs.CtxInfof(ctx, "%s|%s|%s|%d|%d|%+v|%+v|%s", traceID, business, method, success, time.Now().UnixMilli()-starTimestamp, paramsStr, resultStr, errMsg)
 }
 
 func Convert2LogString(object interface{}) string {

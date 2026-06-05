@@ -26,10 +26,10 @@ import (
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes"
 	wanwu_util "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes/wanwu-util"
 	schema2 "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/schema"
+	http_client "github.com/coze-dev/coze-studio/backend/pkg/http-client"
 	"github.com/coze-dev/coze-studio/backend/pkg/logs"
 	"github.com/coze-dev/coze-studio/backend/pkg/safego"
 	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/go-resty/resty/v2"
 	"github.com/spf13/cast"
 )
 
@@ -321,7 +321,7 @@ func (c *Config) setToolConfig(ctx context.Context, inputs *vo.Inputs) error {
 		var schemaStr string
 		var auth *openapi3_util.Auth
 		var err error
-		schemaStr, auth, err = toolRequest(toolInfo.ToolID, toolInfo.ToolType, toolInfo.ApiKey)
+		schemaStr, auth, err = toolRequest(ctx, toolInfo.ToolID, toolInfo.ToolType, toolInfo.ApiKey)
 		if err != nil {
 			return fmt.Errorf("tool request err: %v", err)
 		}
@@ -342,7 +342,7 @@ func (c *Config) setToolConfig(ctx context.Context, inputs *vo.Inputs) error {
 	for _, mcpInfo := range inputs.AgentMCPParams {
 		info, exists := mcpInfoMap[mcpInfo.MCPID]
 		if !exists {
-			result, err := mcpRequest(mcpInfo.MCPID, mcpInfo.MCPType)
+			result, err := mcpRequest(ctx, mcpInfo.MCPID, mcpInfo.MCPType)
 			if err != nil {
 				return fmt.Errorf("mcp request failed: %w", err)
 			}
@@ -454,7 +454,7 @@ type MCPRequestResult struct {
 	Headers   map[string]string             // 请求头
 }
 
-func mcpRequest(id, mcpType string) (*MCPRequestResult, error) {
+func mcpRequest(ctx context.Context, id, mcpType string) (*MCPRequestResult, error) {
 	switch mcpType {
 	case MCPTypeMCP:
 		url, err := url.JoinPath(os.Getenv(WanWuMCPGetUrlEnv))
@@ -463,7 +463,7 @@ func mcpRequest(id, mcpType string) (*MCPRequestResult, error) {
 		}
 		var res response
 		var ret MCPInfo
-		resp, err := resty.New().SetTimeout(time.Minute).R().
+		resp, err := http_client.GetRestyClientWithTimeout(time.Minute).R().SetContext(ctx).
 			SetHeader("Content-Type", "application/json").
 			SetHeader("Accept", "application/json").
 			SetQueryParam("mcpId", id).
@@ -495,7 +495,7 @@ func mcpRequest(id, mcpType string) (*MCPRequestResult, error) {
 		}
 		var res response
 		var ret MCPServerDetail
-		resp, err := resty.New().SetTimeout(time.Minute).R().
+		resp, err := http_client.GetRestyClientWithTimeout(time.Minute).R().SetContext(ctx).
 			SetHeader("Content-Type", "application/json").
 			SetHeader("Accept", "application/json").
 			SetQueryParam("mcpServerId", id).
@@ -535,7 +535,7 @@ func selectMCPUrl(sseUrl, streamableUrl, transport string, auth *wanwu_util.ApiA
 	}
 }
 
-func toolRequest(toolId, toolType, userApiKey string) (string, *openapi3_util.Auth, error) {
+func toolRequest(ctx context.Context,toolId, toolType, userApiKey string) (string, *openapi3_util.Auth, error) {
 	switch toolType {
 	case ToolTypeCustom:
 		url, err := url.JoinPath(os.Getenv(WanWuCustomToolUrlEnv))
@@ -544,7 +544,7 @@ func toolRequest(toolId, toolType, userApiKey string) (string, *openapi3_util.Au
 		}
 		var res response
 		var ret customToolDetail
-		resp, err := resty.New().SetTimeout(time.Minute).R().
+		resp, err := http_client.GetRestyClientWithTimeout(time.Minute).R().SetContext(ctx).
 			SetHeader("Content-Type", "application/json").
 			SetHeader("Accept", "application/json").
 			SetQueryParam("customToolId", toolId).
@@ -575,7 +575,7 @@ func toolRequest(toolId, toolType, userApiKey string) (string, *openapi3_util.Au
 		}
 		var res response
 		var ret toolSquareDetail
-		resp, err := resty.New().SetTimeout(time.Minute).R().
+		resp, err := http_client.GetRestyClientWithTimeout(time.Minute).R().SetContext(ctx).
 			SetHeader("Content-Type", "application/json").
 			SetHeader("Accept", "application/json").
 			SetQueryParam("toolSquareId", toolId).
@@ -754,9 +754,7 @@ func (c *Config) Build(ctx context.Context, ns *schema2.NodeSchema, _ ...schema2
 		KnowledgeParams: buildKnowledgeParams(ctx, c.KnowledgeInfos, c.RetrieveParams),
 		ToolParams:      c.ToolParams,
 		HttpClient: &http.Client{
-			Transport: &http.Transport{
-				ResponseHeaderTimeout: time.Minute,
-			},
+			Transport: http_client.GetClient().Client.Transport,
 		},
 	}
 	switch c.LLMParams.ThinkingType {
@@ -1322,7 +1320,7 @@ func getWorkflowSchemas(ctx context.Context, workflowIDs []string) ([]byte, erro
 	workflowListSchemaAPI := os.Getenv(WanWuWorkflowListSchemaUrlEnv)
 	logs.CtxDebugf(ctx, "[AgentNode] Sending request to %s with workflowIDs: %v", workflowListSchemaAPI, workflowIDs)
 
-	client := resty.New().SetTimeout(time.Minute)
+	client := http_client.GetRestyClientWithTimeout(time.Minute)
 	resp, err := client.R().
 		SetContext(ctx).
 		SetHeader("Content-Type", "application/json").

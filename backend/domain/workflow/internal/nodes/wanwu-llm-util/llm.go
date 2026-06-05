@@ -19,8 +19,8 @@ import (
 	chatmodel "github.com/coze-dev/coze-studio/backend/bizpkg/llm/wanwu-chatmodel"
 	chatmodelImpl "github.com/coze-dev/coze-studio/backend/bizpkg/llm/wanwu-chatmodel/impl/chatmodel"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/entity/vo"
+	http_client "github.com/coze-dev/coze-studio/backend/pkg/http-client"
 	"github.com/coze-dev/coze-studio/backend/pkg/lang/ptr"
-	"github.com/go-resty/resty/v2"
 )
 
 func CreateChatModel(ctx context.Context, llmParams *vo.LLMParams) (modelbuilder.ToolCallingChatModel, *modelmgr.Model, error) {
@@ -85,7 +85,7 @@ func CreateChatModel(ctx context.Context, llmParams *vo.LLMParams) (modelbuilder
 		return nil, nil, err
 	}
 	// modelmgr.Model capability
-	resp, err := resty.New().SetTimeout(time.Minute).R().SetContext(ctx).
+	resp, err := http_client.GetRestyClientWithTimeout(time.Minute).R().SetContext(ctx).
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Accept", "application/json").
 		SetDoNotParseResponse(true).Get(baseUrl)

@@ -36,6 +36,7 @@ import (
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/canvas/convert"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/schema"
+	http_client "github.com/coze-dev/coze-studio/backend/pkg/http-client"
 	"github.com/coze-dev/coze-studio/backend/pkg/lang/crypto"
 	"github.com/coze-dev/coze-studio/backend/pkg/lang/ptr"
 	"github.com/coze-dev/coze-studio/backend/pkg/lang/slices"
@@ -340,7 +341,8 @@ func (c *Config) Build(_ context.Context, _ *schema.NodeSchema, _ ...schema.Buil
 		bodyConfig:      c.BodyConfig,
 		md5FieldMapping: c.MD5FieldMapping,
 	}
-	client := http.DefaultClient
+	// Use http_client with trace propagation
+	client := http_client.GetClient().Client
 	if c.Timeout > 0 {
 		client.Timeout = c.Timeout
 	}
@@ -623,8 +625,10 @@ func httpGet(ctx context.Context, url string) (*http.Response, error) {
 		return nil, err
 	}
 
-	http.DefaultClient.Timeout = time.Second * defaultGetFileTimeout
-	return http.DefaultClient.Do(request)
+	// Use http_client with trace propagation
+	client := http_client.GetClient().Client
+	client.Timeout = time.Second * defaultGetFileTimeout
+	return client.Do(request)
 }
 
 func (hg *HTTPRequester) ToCallbackInput(_ context.Context, input map[string]any) (

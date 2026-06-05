@@ -20,6 +20,7 @@ import (
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes"
 	wanwu_util "github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes/wanwu-util"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/schema"
+	http_client "github.com/coze-dev/coze-studio/backend/pkg/http-client"
 	"github.com/coze-dev/coze-studio/backend/pkg/logs"
 )
 
@@ -114,7 +115,7 @@ type WanWuMCPTool struct {
 	mcpToolArgs   map[string]any
 }
 
-// httpClient 创建共享的 HTTP 客户端，跳过证书验证
+// httpClient 创建共享的 HTTP 客户端，跳过证书验证并支持 trace 传播
 var httpClient = &http.Client{
 	Transport: &http.Transport{
 		TLSClientConfig: &tls.Config{
@@ -123,7 +124,7 @@ var httpClient = &http.Client{
 	},
 }
 
-// headerTransport 是一个 http.RoundTripper 包装器，用于注入自定义请求头
+// headerTransport 是一个 http.RoundTripper 包装器，用于注入自定义请求头和 trace header
 type headerTransport struct {
 	base    http.RoundTripper
 	headers map[string]string
@@ -136,19 +137,19 @@ func (t *headerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.base.RoundTrip(req)
 }
 
-// newHTTPClientWithHeaders 创建带有header息的 HTTP 客户端
+// newHTTPClientWithHeaders 创建带有header息的 HTTP 客户端，支持 trace 传播
 func newHTTPClientWithHeaders(headers map[string]string) *http.Client {
+	// 获取带 trace 的基础 transport
+	baseTransport := http_client.GetClient().Client.Transport
+
 	if len(headers) == 0 {
-		return httpClient
+		// 直接使用带 trace 的 client
+		return http_client.GetClient().Client
 	}
 
 	return &http.Client{
 		Transport: &headerTransport{
-			base: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
-			},
+			base:    baseTransport,
 			headers: headers,
 		},
 	}

@@ -15,7 +15,7 @@ import (
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/canvas/convert"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/nodes"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/schema"
-	"github.com/go-resty/resty/v2"
+	http_client "github.com/coze-dev/coze-studio/backend/pkg/http-client"
 )
 
 type Config struct {
@@ -108,7 +108,7 @@ func guiRequest(ctx context.Context, modelID string, req *guiReq) (map[string]an
 	if err != nil {
 		return nil, err
 	}
-	resp, err := resty.New().SetTimeout(time.Minute).R().SetContext(ctx).
+	resp, err := http_client.GetRestyClientWithTimeout(time.Minute).R().SetContext(ctx).
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Accept", "application/json").
 		SetBody(req).

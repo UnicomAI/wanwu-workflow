@@ -33,7 +33,7 @@
     "zustand": "^4.4.7"
   },
   "peerDependencies": {
-    "axios": "^1.4.0",
+    "axios": "^1.16.1",
     "eventemitter3": "^5.0.1",
     "immer": "^10.0.3",
     "react": ">=18.2.0",

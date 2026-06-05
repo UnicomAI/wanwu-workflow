@@ -93,7 +93,7 @@
     "@coze-studio/bot-utils": "workspace:*",
     "@douyinfe/semi-icons": "^2.36.0",
     "ahooks": "^3.7.8",
-    "axios": "^1.4.0",
+    "axios": "^1.16.1",
     "classnames": "^2.3.2",
     "dayjs": "^1.11.7",
     "immer": "^10.0.3",

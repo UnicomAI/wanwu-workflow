@@ -15,7 +15,7 @@
   "dependencies": {
     "@coze-arch/bot-http": "workspace:*",
     "@coze-arch/logger": "workspace:*",
-    "axios": "^1.4.0"
+    "axios": "^1.16.1"
   },
   "devDependencies": {
     "@coze-arch/bot-typings": "workspace:*",

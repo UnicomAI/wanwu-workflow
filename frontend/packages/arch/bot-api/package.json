@@ -157,7 +157,7 @@
     "@coze-arch/bot-http": "workspace:*",
     "@coze-arch/bot-semi": "workspace:*",
     "@coze-arch/idl": "workspace:*",
-    "axios": "^1.4.0",
+    "axios": "^1.16.1",
     "query-string": "^8.1.0"
   },
   "devDependencies": {

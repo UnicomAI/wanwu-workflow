@@ -1675,7 +1675,7 @@
   "bgi_ai_placeholder_main": "Describe the main content of the desired image",
   "bgi_ai_placeholder_template": "Describe the desired image style, or choose a template directly",
   "bgi_already_set": "Background image already set",
-  "bgi_desc": "Add a background image for your agent in the Coze Agent Store for a more immersive chat experience",
+  "bgi_desc": "Add a background image to your chat flow for a more immersive chat experience",
   "bgi_generate_with_ai_btn": "Generate Background Images with AI",
   "bgi_generate_with_ai_desc": "Describe the desired image and combine it with preset templates to automatically generate a background image",
   "bgi_remove_popup_content": "Once removed, you must republish the agent for the changes to take effect.",

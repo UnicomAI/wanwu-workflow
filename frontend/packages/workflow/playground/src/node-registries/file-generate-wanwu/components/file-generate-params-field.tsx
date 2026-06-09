@@ -123,7 +123,7 @@ export const FileGenerateParamsField = withFieldArray(({
                 }}
                 data-testid={getNodeSetterId('getNodeSetterId-file-generate-fileType')}
               >
-                {['txt', 'docx', 'pdf'].map((v, i) => (
+                {['txt', 'docx', 'pdf', 'md', 'html'].map((v, i) => (
                   <Select.Option
                     value={v}
                     key={v + i}

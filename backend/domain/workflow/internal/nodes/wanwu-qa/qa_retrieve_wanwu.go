@@ -303,7 +303,7 @@ func ragQASearch(ctx context.Context, knowledgeHitParams *HitParams) (*RagKnowle
 	result, err := http_client.GetDefaultClient().PostJson(ctx, &http_client.HttpRequestParams{
 		Url:        os.Getenv("WANWU_QA_SEARCH_URL"),
 		Body:       paramsByte,
-		Timeout:    time.Duration(10) * time.Second,
+		Timeout:    time.Duration(600) * time.Second, // 10 minutes
 		MonitorKey: "rag_qa_hit",
 		LogLevel:   http_client.LogAll,
 	})

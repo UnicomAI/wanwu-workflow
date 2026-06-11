@@ -58,7 +58,7 @@ const Render = () => (
       <InputNumberField
         name="inputs.setting.timeout"
         defaultValue={120}
-        max={180}
+        max={600}
         min={0}
         className="w-full"
         style={{

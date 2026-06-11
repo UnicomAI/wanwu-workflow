@@ -68,7 +68,7 @@ func getBasicConfigurationFromOldConfig() *config.BasicConfiguration {
 	runnerTypeStr := os.Getenv(consts.CodeRunnerType)
 	codeRunnerType := ternary.IFElse(runnerTypeStr == "sandbox", config.CodeRunnerType_Sandbox, config.CodeRunnerType_Local)
 	timeoutSecondsStr := os.Getenv(consts.CodeRunnerTimeoutSeconds)
-	timeoutSeconds := conv.StrToFloat64D(timeoutSecondsStr, 60)
+	timeoutSeconds := conv.StrToFloat64D(timeoutSecondsStr, 600) // 10 minutes
 	memoryLimitMbStr := os.Getenv(consts.CodeRunnerMemoryLimitMB)
 	memoryLimitMB := conv.StrToInt64D(memoryLimitMbStr, 100)
 

@@ -8,10 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/coze-dev/coze-studio/backend/pkg/logs"
-	trace_util "github.com/coze-dev/coze-studio/backend/pkg/trace-util"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/propagation"
 	"io"
 	"mime/multipart"
 	"net"
@@ -20,10 +16,15 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/coze-dev/coze-studio/backend/pkg/logs"
+	trace_util "github.com/coze-dev/coze-studio/backend/pkg/trace-util"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 const (
-	timeout        = 120 * time.Second
+	timeout        = 600 * time.Second // 10 minutes
 	connectTimeout = 60 * time.Second
 )
 
@@ -248,7 +249,7 @@ func SendRequest(ctx context.Context, client *http.Client, httpRequestParams *Ht
 
 	//1.开启超时监控
 	if httpRequestParams.Timeout == 0 {
-		httpRequestParams.Timeout = time.Minute * 1
+		httpRequestParams.Timeout = 10 * time.Minute // 10 minutes default timeout
 	}
 	ctx, cancel := context.WithTimeout(ctx, httpRequestParams.Timeout)
 	defer cancel()

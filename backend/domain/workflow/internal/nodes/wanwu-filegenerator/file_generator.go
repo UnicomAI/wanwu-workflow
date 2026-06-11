@@ -126,7 +126,7 @@ func fileGenerate(ctx context.Context, fileGenerateParams *FileGenerateParams) (
 	result, err := http_client.GetDefaultClient().PostForm(ctx, &http_client.HttpRequestParams{
 		Url:        os.Getenv("WANWU_FILE_GENERATOR_URL"),
 		Params:     params,
-		Timeout:    time.Duration(10) * time.Second,
+		Timeout:    time.Duration(600) * time.Second, // 10 minutes
 		MonitorKey: "file_generate",
 		LogLevel:   http_client.LogAll,
 	})

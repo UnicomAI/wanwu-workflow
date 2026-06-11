@@ -34,7 +34,7 @@ func NewByWanwu() Runner {
 		if f, err := strconv.ParseFloat(os.Getenv(consts.CodeRunnerTimeoutSeconds), 64); err == nil {
 			config.TimeoutSeconds = f
 		} else {
-			config.TimeoutSeconds = 60.0
+			config.TimeoutSeconds = 600.0 // 10 minutes
 		}
 		if mem, err := strconv.ParseInt(os.Getenv(consts.CodeRunnerMemoryLimitMB), 10, 64); err == nil {
 			config.MemoryLimitMB = mem

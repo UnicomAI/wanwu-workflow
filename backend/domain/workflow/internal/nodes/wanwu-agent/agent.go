@@ -1343,7 +1343,6 @@ func getWorkflowSchemas(ctx context.Context, workflowIDs []string) ([]byte, erro
 // - Question: 属于请求上下文特定的动态参数。
 // - CustomModelInfo, MaxHistory: RetrieveParams 配置中未包含。
 // - Temperature, TopP, RepetitionPenalty: RetrieveParams 配置中未包含。
-// - ReturnMeta: RetrieveParams 配置中未包含。
 func buildKnowledgeParams(ctx context.Context, knowledgeInfos []*RetrieveKnowledgeInfo, retrieveParams *RetrieveParams) *KnowledgeParams {
 	if len(knowledgeInfos) == 0 || retrieveParams == nil {
 		return nil
@@ -1364,6 +1363,7 @@ func buildKnowledgeParams(ctx context.Context, knowledgeInfos []*RetrieveKnowled
 		Chichat:              false,
 		AutoCitation:         true,
 		Stream:               true,
+		ReturnMeta:           true, // 与知识库节点对齐：始终返回元数据/角标
 	}
 
 	switch retrieveParams.MatchType {
@@ -1372,12 +1372,14 @@ func buildKnowledgeParams(ctx context.Context, knowledgeInfos []*RetrieveKnowled
 		kp.RerankMod = "rerank_model"
 	case "text":
 		kp.RetrieveMethod = "full_text_search"
+		kp.RerankMod = "rerank_model"
 	case "mix_priority":
 		kp.RetrieveMethod = "hybrid_search"
 		kp.RerankMod = "weighted_score"
+		kp.RerankModelId = "" // 权重搜索模式不走 rerank 模型，清空 id（与知识库节点 buildRerankId 行为对齐）
 		kp.Weight = &WeightParams{
 			VectorWeight: retrieveParams.SemanticsPriority,
-			TextWeight:   retrieveParams.KeywordPriority,
+			TextWeight:   1.0 - retrieveParams.SemanticsPriority, // 前端仅下发 semanticsPriority，关键词权重 = 1 - 语义权重
 		}
 	case "mix_rerank":
 		kp.RetrieveMethod = "hybrid_search"

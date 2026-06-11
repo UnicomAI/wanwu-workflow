@@ -36,9 +36,9 @@ func CreateWorkflowByWanwu(ctx context.Context, c *app.RequestContext) {
 	c.JSON(consts.StatusOK, resp)
 }
 
-// UpdateWorkflowMetaByWanwu 参考UpdateWorkflowMeta
-// @router /api/workflow_api/update_meta_by_wanwu [POST]
-func UpdateWorkflowMetaByWanwu(ctx context.Context, c *app.RequestContext) {
+// ConvertWorkflowByWanwu 参考UpdateWorkflowMeta
+// @router /api/workflow_api/convert_by_wanwu [POST]
+func ConvertWorkflowByWanwu(ctx context.Context, c *app.RequestContext) {
 	var err error
 	var req workflow.UpdateWorkflowMetaRequest
 	err = c.BindAndValidate(&req)
@@ -46,7 +46,7 @@ func UpdateWorkflowMetaByWanwu(ctx context.Context, c *app.RequestContext) {
 		invalidParamRequestResponse(c, err.Error())
 		return
 	}
-	resp, err := appworkflow.SVC.UpdateWorkflowMetaByWanwu(ctx, &req)
+	resp, err := appworkflow.SVC.ConvertWorkflowByWanwu(ctx, &req)
 
 	if err != nil {
 		internalServerErrorResponse(ctx, c, err)
@@ -268,6 +268,26 @@ func DeleteProjectConversationDefByWanwu(ctx context.Context, c *app.RequestCont
 	}
 
 	resp, err := appworkflow.SVC.DeleteApplicationConversationDefByWanwu(ctx, &req)
+	if err != nil {
+		internalServerErrorResponse(ctx, c, err)
+		return
+	}
+
+	c.JSON(consts.StatusOK, resp)
+}
+
+// UpdateWorkflowMetaByWanwu 参考UpdateWorkflowMeta
+// @router /api/workflow_api/update_meta_by_wanwu [POST]
+func UpdateWorkflowMetaByWanwu(ctx context.Context, c *app.RequestContext) {
+	var err error
+	var req workflow.UpdateWorkflowMetaRequest
+	err = c.BindAndValidate(&req)
+	if err != nil {
+		invalidParamRequestResponse(c, err.Error())
+		return
+	}
+	resp, err := appworkflow.SVC.UpdateWorkflowMetaByWanwu(ctx, &req)
+
 	if err != nil {
 		internalServerErrorResponse(ctx, c, err)
 		return

@@ -3,6 +3,7 @@ package coze
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
@@ -23,6 +24,15 @@ func ImportWorkFlow(ctx context.Context, c *app.RequestContext) {
 		invalidParamRequestResponse(c, err.Error())
 		return
 	}
+
+	// 解决名称冲突：如果名称已存在则自动追加序号后缀
+	resolvedName, err := resolveWorkflowNameConflict(ctx, req.SpaceID, req.Name)
+	if err != nil {
+		internalServerErrorResponse(ctx, c, err)
+		return
+	}
+	req.Name = resolvedName
+
 	// create
 	createReq := workflow.CreateWorkflowRequest{
 		SpaceID:  req.SpaceID,
@@ -56,6 +66,37 @@ func ImportWorkFlow(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	c.JSON(consts.StatusOK, resp)
+}
+
+// resolveWorkflowNameConflict 解决名称冲突：如果名称已存在则自动追加序号后缀
+// 依次尝试 原名_1, 原名_2, ... 直到找到不重名的名称
+func resolveWorkflowNameConflict(ctx context.Context, spaceID string, name string) (string, error) {
+	spaceIDInt, err := strconv.ParseInt(spaceID, 10, 64)
+	if err != nil {
+		return "", err
+	}
+
+	// 先检查原名是否可用
+	duplicated, err := appworkflow.GetWorkflowDomainSVC().CheckNameDuplicateInSpace(ctx, spaceIDInt, name, 0)
+	if err != nil {
+		return "", err
+	}
+	if !duplicated {
+		return name, nil
+	}
+
+	// 名称冲突，自动加序号后缀
+	for i := 1; i <= 9999; i++ {
+		candidate := fmt.Sprintf("%s_%d", name, i)
+		duplicated, err := appworkflow.GetWorkflowDomainSVC().CheckNameDuplicateInSpace(ctx, spaceIDInt, candidate, 0)
+		if err != nil {
+			return "", err
+		}
+		if !duplicated {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("无法为导入的工作流生成唯一名称")
 }
 
 type importWorkflowRequest struct {

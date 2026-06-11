@@ -542,6 +542,18 @@ func (r *RepositoryImpl) UpdateMeta(ctx context.Context, id int64, metaUpdate *v
 	return nil
 }
 
+func (r *RepositoryImpl) CheckNameDuplicateInSpace(ctx context.Context, spaceID int64, name string, excludeID int64) (bool, error) {
+	count, err := r.query.WorkflowMeta.WithContext(ctx).
+		Where(r.query.WorkflowMeta.SpaceID.Eq(spaceID)).
+		Where(r.query.WorkflowMeta.Name.Eq(name)).
+		Where(r.query.WorkflowMeta.ID.Neq(excludeID)).
+		Count()
+	if err != nil {
+		return false, vo.WrapError(errno.ErrDatabaseError, fmt.Errorf("check workflow name duplicate: %w", err))
+	}
+	return count > 0, nil
+}
+
 func (r *RepositoryImpl) GetEntity(ctx context.Context, policy *vo.GetPolicy) (_ *entity.Workflow, err error) {
 	defer func() {
 		if err != nil {

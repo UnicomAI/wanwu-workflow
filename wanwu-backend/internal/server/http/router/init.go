@@ -135,7 +135,7 @@ func Register(r *hertz_server.Hertz) {
 			_workflow_api.POST("/test_resume", append(_workflowtestresumeMw(), coze.WorkFlowTestResume)...)
 			_workflow_api.POST("/test_run", append(_workflowtestrunMw(), coze.WorkFlowTestRun)...)
 			_workflow_api.POST("/update_meta", append(_updateworkflowmetaMw(), coze.UpdateWorkflowMeta)...)
-			_workflow_api.POST("/update_meta_by_wanwu", append(_updateworkflowmetaMw(), coze.UpdateWorkflowMetaByWanwu)...)
+			_workflow_api.POST("/convert_by_wanwu", append(_convertWorkflowMw(), coze.ConvertWorkflowByWanwu)...)
 			_workflow_api.POST("/validate_tree", append(_validatetreeMw(), coze.ValidateTree)...)
 			_workflow_api.POST("/workflow_detail", append(_getworkflowdetailMw(), coze.GetWorkflowDetail)...)
 			_workflow_api.POST("/workflow_detail_info", append(_getworkflowdetailinfoMw(), coze.GetWorkflowDetailInfoByWanwu)...)
@@ -144,6 +144,7 @@ func Register(r *hertz_server.Hertz) {
 			_workflow_api.POST("/latest_version_list", append(_getworkflowlatestversionMw(), coze.MGetWorkflowLatestVersionByWanwu)...)
 			_workflow_api.PUT("/version_description", append(_updateworkflowversiondescriptionMw(), coze.UpdateWorkflowVersionDescriptionByWanwu)...)
 			_workflow_api.POST("/revert", append(_rollbackworkflowversionMw(), coze.RollbackWorkflowVersionByWanwu)...)
+			_workflow_api.POST("/update_meta_by_wanwu", append(_updateworkflowmetaMw(), coze.UpdateWorkflowMetaByWanwu)...)
 
 			{
 				_chat_flow_role := _workflow_api.Group("/chat_flow_role", _chat_flow_roleMw()...)

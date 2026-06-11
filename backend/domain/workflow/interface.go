@@ -39,6 +39,7 @@ type Service interface {
 	Delete(ctx context.Context, policy *vo.DeletePolicy) (ids []int64, err error)
 	Publish(ctx context.Context, policy *vo.PublishPolicy) (err error)
 	UpdateMeta(ctx context.Context, id int64, metaUpdate *vo.MetaUpdate) (err error)
+	CheckNameDuplicateInSpace(ctx context.Context, spaceID int64, name string, excludeID int64) (bool, error)
 	CopyWorkflow(ctx context.Context, workflowID int64, policy vo.CopyWorkflowPolicy) (*entity.Workflow, error)
 	WorkflowSchemaCheck(ctx context.Context, wf *entity.Workflow, checks []workflow.CheckType) ([]*workflow.CheckResult, error)
 
@@ -97,6 +98,7 @@ type Repository interface {
 	MGetReferences(ctx context.Context, policy *vo.MGetReferencePolicy) (
 		[]*entity.WorkflowReference, error)
 	MGetMetas(ctx context.Context, query *vo.MetaQuery) (map[int64]*vo.Meta, int64, error)
+	CheckNameDuplicateInSpace(ctx context.Context, spaceID int64, name string, excludeID int64) (bool, error)
 	MGetDrafts(ctx context.Context, policy *vo.MGetPolicy) ([]*entity.Workflow, int64, error)
 	MGetLatestVersion(ctx context.Context, policy *vo.MGetPolicy) ([]*entity.Workflow, int64, error)
 

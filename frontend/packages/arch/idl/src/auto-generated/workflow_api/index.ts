@@ -1176,13 +1176,13 @@ export default class WorkflowApiService<T> {
     return this.request({ url, method, data }, options);
   }
 
-  /** POST /api/workflow_api/update_meta */
+  /** POST /api/workflow_api/update_meta_by_wanwu */
   UpdateWorkflowMeta(
     req: workflow.UpdateWorkflowMetaRequest,
     options?: T,
   ): Promise<workflow.UpdateWorkflowMetaResponse> {
     const _req = req;
-    const url = this.genBaseURL('/api/workflow_api/update_meta');
+    const url = this.genBaseURL('/api/workflow_api/update_meta_by_wanwu');
     const method = 'POST';
     const data = {
       workflow_id: _req['workflow_id'],

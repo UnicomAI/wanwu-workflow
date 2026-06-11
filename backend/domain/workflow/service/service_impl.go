@@ -764,6 +764,10 @@ func (i *impl) UpdateMeta(ctx context.Context, id int64, metaUpdate *vo.MetaUpda
 	return nil
 }
 
+func (i *impl) CheckNameDuplicateInSpace(ctx context.Context, spaceID int64, name string, excludeID int64) (bool, error) {
+	return i.repo.CheckNameDuplicateInSpace(ctx, spaceID, name, excludeID)
+}
+
 func (i *impl) CopyWorkflow(ctx context.Context, workflowID int64, policy vo.CopyWorkflowPolicy) (*entity.Workflow, error) {
 	wf, err := i.repo.CopyWorkflow(ctx, workflowID, policy)
 	if err != nil {

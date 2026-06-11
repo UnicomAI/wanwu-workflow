@@ -43,6 +43,7 @@ const (
 	ErrConversationNodeInvalidOperation            = 720702250
 	ErrOnlyDefaultConversationAllowInAgentScenario = 720712033
 	ErrConversationNodesNotAvailable               = 702093204
+	ErrWorkflowNameDuplicated                      = 720702201
 )
 
 const (
@@ -283,6 +284,12 @@ func init() {
 	code.Register(
 		ErrConversationNameIsDuplicated,
 		"conversation name {name} is duplicated",
+		code.WithAffectStability(false),
+	)
+
+	code.Register(
+		ErrWorkflowNameDuplicated,
+		"workflow name {name} already exists in this space",
 		code.WithAffectStability(false),
 	)
 

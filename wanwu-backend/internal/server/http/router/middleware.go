@@ -473,3 +473,7 @@ func _conversation1Mw() []app.HandlerFunc {
 func _openapicreateconversationMw() []app.HandlerFunc {
 	return nil
 }
+
+func _convertWorkflowMw() []app.HandlerFunc {
+	return nil
+}

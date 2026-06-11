@@ -56,6 +56,18 @@ func (w *ApplicationService) CreateWorkflowByWanwu(ctx context.Context, req *wor
 		return nil, err
 	}
 
+	if req.Name != "" {
+		duplicated, err := GetWorkflowDomainSVC().CheckNameDuplicateInSpace(ctx, spaceID, req.Name, 0)
+		if err != nil {
+			return nil, err
+		}
+		if duplicated {
+			return nil, vo.WrapError(errno.ErrWorkflowNameDuplicated,
+				fmt.Errorf("workflow name %s already exists in space %d", req.Name, spaceID),
+				errorx.KV("name", req.Name), errorx.KV("spaceID", strconv.FormatInt(spaceID, 10)))
+		}
+	}
+
 	wf := &vo.MetaCreate{
 		CreatorID:        uID,
 		SpaceID:          spaceID,
@@ -115,9 +127,9 @@ func (w *ApplicationService) CreateWorkflowByWanwu(ctx context.Context, req *wor
 	}, nil
 }
 
-// UpdateWorkflowMetaByWanwu 参考UpdateWorkflowMeta
+// ConvertWorkflowByWanwu 参考UpdateWorkflowMeta
 // 1. 如果是转换成chatflow模式，且没有对话模板，则创建一个默认的对话模板
-func (w *ApplicationService) UpdateWorkflowMetaByWanwu(ctx context.Context, req *workflow.UpdateWorkflowMetaRequest) (
+func (w *ApplicationService) ConvertWorkflowByWanwu(ctx context.Context, req *workflow.UpdateWorkflowMetaRequest) (
 	_ *workflow.UpdateWorkflowMetaResponse, err error,
 ) {
 	defer func() {
@@ -685,6 +697,61 @@ func (w *ApplicationService) GetCanvasInfoByWanwu(ctx context.Context, req *Expo
 	return &workflow.GetCanvasInfoResponse{
 		Data: canvasData,
 	}, nil
+}
+
+func (w *ApplicationService) UpdateWorkflowMetaByWanwu(ctx context.Context, req *workflow.UpdateWorkflowMetaRequest) (
+	_ *workflow.UpdateWorkflowMetaResponse, err error,
+) {
+	defer func() {
+		if panicErr := recover(); panicErr != nil {
+			err = safego.NewPanicErr(panicErr, debug.Stack())
+		}
+
+		if err != nil {
+			err = vo.WrapIfNeeded(errno.ErrWorkflowOperationFail, err, errorx.KV("cause", vo.UnwrapRootErr(err).Error()))
+		}
+	}()
+
+	if err := checkUserSpace(ctx, ctxutil.MustGetUIDFromCtx(ctx), mustParseInt64(req.GetSpaceID())); err != nil {
+		return nil, err
+	}
+
+	workflowID := mustParseInt64(req.GetWorkflowID())
+
+	if req.Name != nil {
+		spaceID := mustParseInt64(req.GetSpaceID())
+		duplicated, err := GetWorkflowDomainSVC().CheckNameDuplicateInSpace(ctx, spaceID, *req.Name, workflowID)
+		if err != nil {
+			return nil, err
+		}
+		if duplicated {
+			return nil, vo.WrapError(errno.ErrWorkflowNameDuplicated,
+				fmt.Errorf("workflow name %s already exists in space %d", *req.Name, spaceID),
+				errorx.KV("name", *req.Name), errorx.KV("spaceID", strconv.FormatInt(spaceID, 10)))
+		}
+	}
+
+	err = GetWorkflowDomainSVC().UpdateMeta(ctx, mustParseInt64(req.GetWorkflowID()), &vo.MetaUpdate{
+		Name:         req.Name,
+		Desc:         req.Desc,
+		IconURI:      req.IconURI,
+		WorkflowMode: req.FlowMode,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	safego.Go(ctx, func() {
+		err := PublishWorkflowResource(ctx, workflowID, nil, search.Updated, &search.ResourceDocument{
+			Name:         req.Name,
+			UpdateTimeMS: ptr.Of(time.Now().UnixMilli()),
+		})
+		if err != nil {
+			logs.CtxErrorf(ctx, "publish update workflow resource failed, workflowID: %d, err: %v", workflowID, err)
+		}
+	})
+
+	return &workflow.UpdateWorkflowMetaResponse{}, nil
 }
 
 // -- internal ---

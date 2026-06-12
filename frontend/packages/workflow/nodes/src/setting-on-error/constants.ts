@@ -63,22 +63,22 @@ export const SETTING_ON_ERROR_PORT = 'branch_error';
 export const SETTING_ON_ERROR_MIN_TIMEOUT = 100;
 
 /**
- * Other nodes: default 1 minute, maximum 1 minute;
+ * Other nodes: default 10 minutes, maximum 10 minutes;
  */
 export const SETTING_ON_ERROR_DEFAULT_TIMEOUT = {
-  default: 60 * 1000,
-  max: 60 * 1000,
+  default: 10 * 60 * 1000,
+  max: 10 * 60 * 1000,
 };
 
 /**
  * Node configuration
- * LLM: Default 3 minutes, maximum 10 minutes;
- * Plugin: Default 3 minutes, maximum 3 minutes;
+ * LLM: Default 10 minutes, maximum 10 minutes;
+ * Plugin: Default 10 minutes, maximum 10 minutes;
  */
 export const SETTING_ON_ERROR_NODES_CONFIG = {
   [StandardNodeType.LLM]: {
     timeout: {
-      default: 3 * 60 * 1000,
+      default: 10 * 60 * 1000,
       max: 10 * 60 * 1000,
       init: 10 * 60 * 1000,
     },
@@ -86,8 +86,8 @@ export const SETTING_ON_ERROR_NODES_CONFIG = {
   },
   [StandardNodeType.Api]: {
     timeout: {
-      default: 3 * 60 * 1000,
-      max: 3 * 60 * 1000,
+      default: 10 * 60 * 1000,
+      max: 10 * 60 * 1000,
     },
   },
 };

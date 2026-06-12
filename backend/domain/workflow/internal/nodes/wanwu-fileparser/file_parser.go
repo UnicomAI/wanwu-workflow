@@ -138,7 +138,7 @@ func fileParser(ctx context.Context, fileParserParams *FileParserParams) ([]*Fil
 	result, err := http_client.GetDefaultClient().PostJson(ctx, &http_client.HttpRequestParams{
 		Url:        os.Getenv("WANWU_FILE_PARSER_URL"),
 		Body:       paramsByte,
-		Timeout:    time.Duration(10) * time.Second,
+		Timeout:    time.Duration(600) * time.Second, // 10 minutes
 		MonitorKey: "file_parser",
 		LogLevel:   http_client.LogAll,
 	})

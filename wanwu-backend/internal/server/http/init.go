@@ -3,15 +3,16 @@ package http
 import (
 	"context"
 
-	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/config"
-	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/internal/server/http/middleware"
-	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/internal/server/http/router"
 	hertz_server "github.com/cloudwego/hertz/pkg/app/server"
 	hertz_config "github.com/cloudwego/hertz/pkg/common/config"
 	coze_middleware "github.com/coze-dev/coze-studio/backend/api/middleware"
 	trace_util "github.com/coze-dev/coze-studio/backend/pkg/trace-util"
 	hertz_cors "github.com/hertz-contrib/cors"
 	hertztracing "github.com/hertz-contrib/obs-opentelemetry/tracing"
+
+	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/config"
+	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/internal/server/http/middleware"
+	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/internal/server/http/router"
 )
 
 func Init() {

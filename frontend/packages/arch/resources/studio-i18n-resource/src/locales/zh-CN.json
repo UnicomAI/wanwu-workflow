@@ -1743,7 +1743,7 @@
   "bgi_ai_placeholder_main": "描述希望生成的画面主体内容",
   "bgi_ai_placeholder_template": "描述希望生成的画面风格，或直接选择一个模板",
   "bgi_already_set": "已配置背景图片",
-  "bgi_desc": "为你的智能体在扣子智能体商店增加对话背景图片，对话时更加沉浸",
+  "bgi_desc": "为你的对话流增加对话背景图片，对话时更加沉浸",
   "bgi_generate_with_ai_btn": "AI 生成背景图",
   "bgi_generate_with_ai_desc": "描述你希望生成的画面，并结合预置模板，自动生成背景图",
   "bgi_remove_popup_content": "移除后，需要重新发布智能体才能生效。",

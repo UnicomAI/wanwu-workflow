@@ -75,8 +75,6 @@ func (w *ApplicationService) OpenAPICreateConversationByWanwu(ctx context.Contex
 		userID     = apiKeyInfo.UserID
 		env        = ternary.IFElse(req.GetDraftMode(), vo.Draft, vo.Online)
 		cID        int64
-		//spaceID = mustParseInt64(req.GetSpaceID())
-		//_       = spaceID
 	)
 
 	// 检查 workflowID 是否存在
@@ -148,6 +146,7 @@ func (w *ApplicationService) OpenAPICreateConversationByWanwu(ctx context.Contex
 	}, nil
 }
 
+// DeleteApplicationConversationDef 参考DeleteApplicationConversationDef
 func (w *ApplicationService) DeleteApplicationConversationDefByWanwu(ctx context.Context, req *workflow.DeleteProjectConversationDefRequest) (resp *workflow.DeleteProjectConversationDefResponse, err error) {
 	defer func() {
 		if panicErr := recover(); panicErr != nil {

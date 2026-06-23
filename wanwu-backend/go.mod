@@ -73,7 +73,6 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/eino-contrib/jsonschema v1.0.0 // indirect
 	github.com/eino-contrib/ollama v0.1.0 // indirect
-	github.com/elastic/go-elasticsearch/v8 v8.19.0 // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/extrame/ole2 v0.0.0-20160812065207-d69429661ad7 // indirect
 	github.com/extrame/xls v0.0.1 // indirect

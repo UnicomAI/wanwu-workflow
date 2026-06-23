@@ -19,15 +19,19 @@ package conversation
 import (
 	"context"
 	"errors"
+	"io"
 	"testing"
 
+	"github.com/cloudwego/eino/schema"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
 	"github.com/coze-dev/coze-studio/backend/api/model/conversation/common"
 	"github.com/coze-dev/coze-studio/backend/api/model/conversation/run"
 	singleagent "github.com/coze-dev/coze-studio/backend/crossdomain/agent/model"
+	agentrun "github.com/coze-dev/coze-studio/backend/crossdomain/agentrun/model"
 	saEntity "github.com/coze-dev/coze-studio/backend/domain/agent/singleagent/entity"
+	"github.com/coze-dev/coze-studio/backend/domain/conversation/agentrun/entity"
 	convEntity "github.com/coze-dev/coze-studio/backend/domain/conversation/conversation/entity"
 	openapiEntity "github.com/coze-dev/coze-studio/backend/domain/openauth/openapiauth/entity"
 	cmdEntity "github.com/coze-dev/coze-studio/backend/domain/shortcutcmd/entity"
@@ -155,8 +159,9 @@ func TestOpenapiAgentRun_Success(t *testing.T) {
 	// Mock agent check
 	mockAgent := &saEntity.SingleAgent{
 		SingleAgent: &singleagent.SingleAgent{
-			AgentID: 67890,
-			SpaceID: 54321,
+			AgentID:   67890,
+			SpaceID:   54321,
+			CreatorID: 12345,
 		},
 	}
 	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
@@ -213,8 +218,9 @@ func TestOpenapiAgentRun_CheckConversationError(t *testing.T) {
 	// Mock agent check success
 	mockAgent := &saEntity.SingleAgent{
 		SingleAgent: &singleagent.SingleAgent{
-			AgentID: 67890,
-			SpaceID: 54321,
+			AgentID:   67890,
+			SpaceID:   54321,
+			CreatorID: 12345,
 		},
 	}
 	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
@@ -236,8 +242,9 @@ func TestOpenapiAgentRun_ConversationPermissionError(t *testing.T) {
 	// Mock agent check success
 	mockAgent := &saEntity.SingleAgent{
 		SingleAgent: &singleagent.SingleAgent{
-			AgentID: 67890,
-			SpaceID: 54321,
+			AgentID:   67890,
+			SpaceID:   54321,
+			CreatorID: 12345,
 		},
 	}
 	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
@@ -264,8 +271,9 @@ func TestOpenapiAgentRun_CreateNewConversation(t *testing.T) {
 	// Mock agent check success
 	mockAgent := &saEntity.SingleAgent{
 		SingleAgent: &singleagent.SingleAgent{
-			AgentID: 67890,
-			SpaceID: 54321,
+			AgentID:   67890,
+			SpaceID:   54321,
+			CreatorID: 12345,
 		},
 	}
 	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
@@ -275,10 +283,11 @@ func TestOpenapiAgentRun_CreateNewConversation(t *testing.T) {
 		ID:        22222,
 		CreatorID: 12345,
 		SectionID: 98765,
+		UserID:    ptr.Of("test-user"),
 	}
 	mockConversation.EXPECT().Create(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, meta *convEntity.CreateMeta) (*convEntity.Conversation, error) {
 		assert.Equal(t, int64(67890), meta.AgentID)
-		assert.Equal(t, int64(12345), meta.UserID)
+		assert.Equal(t, "test-user", ptr.From(meta.UserID))
 		assert.Equal(t, common.Scene_SceneOpenApi, meta.Scene)
 		return mockConv, nil
 	})
@@ -300,8 +309,9 @@ func TestOpenapiAgentRun_AgentRunError(t *testing.T) {
 	// Mock agent check success
 	mockAgent := &saEntity.SingleAgent{
 		SingleAgent: &singleagent.SingleAgent{
-			AgentID: 67890,
-			SpaceID: 54321,
+			AgentID:   67890,
+			SpaceID:   54321,
+			CreatorID: 12345,
 		},
 	}
 	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
@@ -335,8 +345,9 @@ func TestOpenapiAgentRun_WithShortcutCommand(t *testing.T) {
 	// Mock agent check success
 	mockAgent := &saEntity.SingleAgent{
 		SingleAgent: &singleagent.SingleAgent{
-			AgentID: 67890,
-			SpaceID: 54321,
+			AgentID:   67890,
+			SpaceID:   54321,
+			CreatorID: 12345,
 		},
 	}
 	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
@@ -375,8 +386,9 @@ func TestOpenapiAgentRun_WithMultipleMessages(t *testing.T) {
 	// Mock agent check success
 	mockAgent := &saEntity.SingleAgent{
 		SingleAgent: &singleagent.SingleAgent{
-			AgentID: 67890,
-			SpaceID: 54321,
+			AgentID:   67890,
+			SpaceID:   54321,
+			CreatorID: 12345,
 		},
 	}
 	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
@@ -417,8 +429,9 @@ func TestOpenapiAgentRun_WithAssistantMessage(t *testing.T) {
 	// Mock agent check success
 	mockAgent := &saEntity.SingleAgent{
 		SingleAgent: &singleagent.SingleAgent{
-			AgentID: 67890,
-			SpaceID: 54321,
+			AgentID:   67890,
+			SpaceID:   54321,
+			CreatorID: 12345,
 		},
 	}
 	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
@@ -486,8 +499,9 @@ func TestOpenapiAgentRun_WithMixedContentTypes(t *testing.T) {
 	// Mock agent check success
 	mockAgent := &saEntity.SingleAgent{
 		SingleAgent: &singleagent.SingleAgent{
-			AgentID: 67890,
-			SpaceID: 54321,
+			AgentID:   67890,
+			SpaceID:   54321,
+			CreatorID: 12345,
 		},
 	}
 	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
@@ -550,8 +564,9 @@ func TestOpenapiAgentRun_ParseAdditionalMessages_InvalidRole(t *testing.T) {
 	// Mock agent check success
 	mockAgent := &saEntity.SingleAgent{
 		SingleAgent: &singleagent.SingleAgent{
-			AgentID: 67890,
-			SpaceID: 54321,
+			AgentID:   67890,
+			SpaceID:   54321,
+			CreatorID: 12345,
 		},
 	}
 	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
@@ -593,8 +608,9 @@ func TestOpenapiAgentRun_ParseAdditionalMessages_InvalidType(t *testing.T) {
 	// Mock agent check success
 	mockAgent := &saEntity.SingleAgent{
 		SingleAgent: &singleagent.SingleAgent{
-			AgentID: 67890,
-			SpaceID: 54321,
+			AgentID:   67890,
+			SpaceID:   54321,
+			CreatorID: 12345,
 		},
 	}
 	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
@@ -636,8 +652,9 @@ func TestOpenapiAgentRun_ParseAdditionalMessages_AnswerWithNonTextContent(t *tes
 	// Mock agent check success
 	mockAgent := &saEntity.SingleAgent{
 		SingleAgent: &singleagent.SingleAgent{
-			AgentID: 67890,
-			SpaceID: 54321,
+			AgentID:   67890,
+			SpaceID:   54321,
+			CreatorID: 12345,
 		},
 	}
 	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
@@ -677,8 +694,9 @@ func TestOpenapiAgentRun_ParseAdditionalMessages_MixApiWithFileURL(t *testing.T)
 	// Mock agent check success
 	mockAgent := &saEntity.SingleAgent{
 		SingleAgent: &singleagent.SingleAgent{
-			AgentID: 67890,
-			SpaceID: 54321,
+			AgentID:   67890,
+			SpaceID:   54321,
+			CreatorID: 12345,
 		},
 	}
 	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
@@ -721,8 +739,9 @@ func TestOpenapiAgentRun_ParseAdditionalMessages_MixApiWithFileID(t *testing.T) 
 	// Mock agent check success
 	mockAgent := &saEntity.SingleAgent{
 		SingleAgent: &singleagent.SingleAgent{
-			AgentID: 67890,
-			SpaceID: 54321,
+			AgentID:   67890,
+			SpaceID:   54321,
+			CreatorID: 12345,
 		},
 	}
 	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
@@ -776,8 +795,9 @@ func TestOpenapiAgentRun_ParseAdditionalMessages_FileIDError(t *testing.T) {
 	// Mock agent check success
 	mockAgent := &saEntity.SingleAgent{
 		SingleAgent: &singleagent.SingleAgent{
-			AgentID: 67890,
-			SpaceID: 54321,
+			AgentID:   67890,
+			SpaceID:   54321,
+			CreatorID: 12345,
 		},
 	}
 	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
@@ -825,8 +845,9 @@ func TestOpenapiAgentRun_ParseAdditionalMessages_EmptyContent(t *testing.T) {
 	// Mock agent check success
 	mockAgent := &saEntity.SingleAgent{
 		SingleAgent: &singleagent.SingleAgent{
-			AgentID: 67890,
-			SpaceID: 54321,
+			AgentID:   67890,
+			SpaceID:   54321,
+			CreatorID: 12345,
 		},
 	}
 	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
@@ -877,8 +898,9 @@ func TestOpenapiAgentRun_ParseAdditionalMessages_NilMessage(t *testing.T) {
 	// Mock agent check success
 	mockAgent := &saEntity.SingleAgent{
 		SingleAgent: &singleagent.SingleAgent{
-			AgentID: 67890,
-			SpaceID: 54321,
+			AgentID:   67890,
+			SpaceID:   54321,
+			CreatorID: 12345,
 		},
 	}
 	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
@@ -898,4 +920,274 @@ func TestOpenapiAgentRun_ParseAdditionalMessages_NilMessage(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "mock stream error")
+}
+
+type MockStreamReader struct {
+	chunks []*entity.AgentRunResponse
+	index  int
+}
+
+func (m *MockStreamReader) Recv() (*entity.AgentRunResponse, error) {
+	if m.index >= len(m.chunks) {
+		return nil, io.EOF
+	}
+	response := m.chunks[m.index]
+	m.index++
+	return response, nil
+}
+
+func newMockStreamReader(chunks []*entity.AgentRunResponse) *schema.StreamReader[*entity.AgentRunResponse] {
+
+	sr, sw := schema.Pipe[*entity.AgentRunResponse](10)
+
+	go func() {
+		defer sw.Close()
+		for _, chunk := range chunks {
+			sw.Send(chunk, nil)
+		}
+	}()
+
+	return sr
+}
+
+func TestOpenapiAgentRunSync_Success(t *testing.T) {
+	app, _, _, mockAgentRun, mockConversation, mockSingleAgent, _ := setupMocks(t)
+	ctx := createTestContext()
+
+	req := &run.ChatV3Request{
+		BotID:          67890,
+		ConversationID: ptr.Of(int64(11111)),
+		User:           "test-user",
+		AdditionalMessages: []*run.EnterMessage{
+			{
+				Role:        "user",
+				Content:     "test query",
+				ContentType: run.ContentTypeText,
+			},
+		},
+	}
+
+	// Mock agent check success
+	mockAgent := &saEntity.SingleAgent{
+		SingleAgent: &singleagent.SingleAgent{
+			AgentID: 67890,
+			SpaceID: 54321,
+		},
+	}
+	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
+
+	// Mock conversation check success
+	mockConv := &convEntity.Conversation{
+		ID:        11111,
+		CreatorID: 12345,
+		SectionID: 98765,
+	}
+	mockConversation.EXPECT().GetByID(ctx, int64(11111)).Return(mockConv, nil)
+
+	// Mock successful agent run with stream
+	mockStream := newMockStreamReader([]*entity.AgentRunResponse{
+		{
+			Event: entity.RunEventCreated,
+			ChunkRunItem: &entity.RunRecordMeta{
+				ID:             999,
+				ConversationID: 11111,
+				AgentID:        67890,
+				Status:         entity.RunStatusCompleted,
+				SectionID:      98765,
+				CreatedAt:      1640995200000, // 2022-01-01 00:00:00
+				CompletedAt:    1640995260000, // 2022-01-01 00:01:00
+				Usage: &agentrun.Usage{
+					LlmTotalTokens:      100,
+					LlmPromptTokens:     60,
+					LlmCompletionTokens: 40,
+				},
+			},
+		},
+	})
+	mockAgentRun.EXPECT().AgentRun(ctx, gomock.Any()).Return(mockStream, nil)
+
+	result, err := app.OpenapiAgentRunSync(ctx, req)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.NotNil(t, result.ChatDetail)
+	assert.Equal(t, int64(999), result.ChatDetail.ID)
+	assert.Equal(t, int64(11111), result.ChatDetail.ConversationID)
+	assert.Equal(t, int64(67890), result.ChatDetail.BotID)
+	assert.Equal(t, string(entity.RunStatusCompleted), result.ChatDetail.Status)
+	assert.Equal(t, ptr.Of(int64(98765)), result.ChatDetail.SectionID)
+	assert.Equal(t, ptr.Of(int32(1640995200)), result.ChatDetail.CreatedAt)
+	assert.Equal(t, ptr.Of(int32(1640995260)), result.ChatDetail.CompletedAt)
+	assert.NotNil(t, result.ChatDetail.Usage)
+	assert.Equal(t, ptr.Of(int32(100)), result.ChatDetail.Usage.TokenCount)
+	assert.Equal(t, ptr.Of(int32(60)), result.ChatDetail.Usage.InputTokens)
+	assert.Equal(t, ptr.Of(int32(40)), result.ChatDetail.Usage.OutputTokens)
+}
+
+func TestOpenapiAgentRunSync_AgentNotFound(t *testing.T) {
+	app, _, _, _, _, mockSingleAgent, _ := setupMocks(t)
+	ctx := createTestContext()
+
+	req := &run.ChatV3Request{
+		BotID: 67890,
+		AdditionalMessages: []*run.EnterMessage{
+			{
+				Role:        "user",
+				Content:     "test query",
+				ContentType: run.ContentTypeText,
+			},
+		},
+	}
+
+	// Mock agent check failure
+	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(nil, nil)
+
+	result, err := app.OpenapiAgentRunSync(ctx, req)
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "agent not exists")
+}
+
+func TestOpenapiAgentRunSync_ConversationPermissionError(t *testing.T) {
+	app, _, _, _, mockConversation, mockSingleAgent, _ := setupMocks(t)
+	ctx := createTestContext()
+
+	req := &run.ChatV3Request{
+		BotID:          67890,
+		ConversationID: ptr.Of(int64(11111)),
+		AdditionalMessages: []*run.EnterMessage{
+			{
+				Role:        "user",
+				Content:     "test query",
+				ContentType: run.ContentTypeText,
+			},
+		},
+	}
+
+	// Mock agent check success
+	mockAgent := &saEntity.SingleAgent{
+		SingleAgent: &singleagent.SingleAgent{
+			AgentID: 67890,
+			SpaceID: 54321,
+		},
+	}
+	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
+
+	// Mock conversation check with wrong user
+	mockConv := &convEntity.Conversation{
+		ID:        11111,
+		CreatorID: 99999, // Different user ID
+		SectionID: 98765,
+	}
+	mockConversation.EXPECT().GetByID(ctx, int64(11111)).Return(mockConv, nil)
+
+	result, err := app.OpenapiAgentRunSync(ctx, req)
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "user not match")
+}
+
+func TestOpenapiAgentRunSync_StreamError(t *testing.T) {
+	app, _, _, mockAgentRun, mockConversation, mockSingleAgent, _ := setupMocks(t)
+	ctx := createTestContext()
+
+	req := &run.ChatV3Request{
+		BotID:          67890,
+		ConversationID: ptr.Of(int64(11111)),
+		User:           "test-user",
+		AdditionalMessages: []*run.EnterMessage{
+			{
+				Role:        "user",
+				Content:     "test query",
+				ContentType: run.ContentTypeText,
+			},
+		},
+	}
+
+	// Mock agent check success
+	mockAgent := &saEntity.SingleAgent{
+		SingleAgent: &singleagent.SingleAgent{
+			AgentID: 67890,
+			SpaceID: 54321,
+		},
+	}
+	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
+
+	// Mock conversation check success
+	mockConv := &convEntity.Conversation{
+		ID:        11111,
+		CreatorID: 12345,
+		SectionID: 98765,
+	}
+	mockConversation.EXPECT().GetByID(ctx, int64(11111)).Return(mockConv, nil)
+
+	// Mock stream with error event
+	mockStream := newMockStreamReader([]*entity.AgentRunResponse{
+		{
+			Event: entity.RunEventError,
+			Error: &entity.RunError{
+				Code: 500,
+				Msg:  "agent run failed",
+			},
+		},
+	})
+	mockAgentRun.EXPECT().AgentRun(ctx, gomock.Any()).Return(mockStream, nil)
+
+	result, err := app.OpenapiAgentRunSync(ctx, req)
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
+
+	assert.Contains(t, err.Error(), "code=500")
+}
+
+func TestOpenapiAgentRunSync_NoFinalResult(t *testing.T) {
+	app, _, _, mockAgentRun, mockConversation, mockSingleAgent, _ := setupMocks(t)
+	ctx := createTestContext()
+
+	req := &run.ChatV3Request{
+		BotID:          67890,
+		ConversationID: ptr.Of(int64(11111)),
+		User:           "test-user",
+		AdditionalMessages: []*run.EnterMessage{
+			{
+				Role:        "user",
+				Content:     "test query",
+				ContentType: run.ContentTypeText,
+			},
+		},
+	}
+
+	// Mock agent check success
+	mockAgent := &saEntity.SingleAgent{
+		SingleAgent: &singleagent.SingleAgent{
+			AgentID: 67890,
+			SpaceID: 54321,
+		},
+	}
+	mockSingleAgent.EXPECT().ObtainAgentByIdentity(ctx, gomock.Any()).Return(mockAgent, nil)
+
+	// Mock conversation check success
+	mockConv := &convEntity.Conversation{
+		ID:        11111,
+		CreatorID: 12345,
+		SectionID: 98765,
+	}
+	mockConversation.EXPECT().GetByID(ctx, int64(11111)).Return(mockConv, nil)
+
+	// Mock stream with no RunEventCreated event
+	mockStream := newMockStreamReader([]*entity.AgentRunResponse{
+		{
+			Event: entity.RunEventMessageDelta, // Different event type
+		},
+	})
+	mockAgentRun.EXPECT().AgentRun(ctx, gomock.Any()).Return(mockStream, nil)
+
+	result, err := app.OpenapiAgentRunSync(ctx, req)
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "no final result received")
 }

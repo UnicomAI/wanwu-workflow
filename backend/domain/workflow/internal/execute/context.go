@@ -33,6 +33,7 @@ import (
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/entity"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/entity/vo"
 	"github.com/coze-dev/coze-studio/backend/pkg/lang/ptr"
+	"github.com/coze-dev/coze-studio/backend/pkg/logs"
 )
 
 type Context struct {
@@ -248,6 +249,7 @@ func PrepareRootExeCtx(ctx context.Context, h *WorkflowHandler) (context.Context
 			return state.SetWorkflowCtx(rootExeCtx)
 		})
 		if err != nil {
+			logs.Errorf("PrepareRootExeCtx error ProcessState: %v", err)
 			return ctx, err
 		}
 	}
@@ -271,6 +273,7 @@ func PrepareSubExeCtx(ctx context.Context, wb *entity.WorkflowBasic, requireChec
 
 	subExecuteID, err := workflow.GetRepository().GenID(ctx)
 	if err != nil {
+		logs.Errorf("PrepareSubExeCtx error GenID: %v", err)
 		return nil, err
 	}
 
@@ -302,6 +305,7 @@ func PrepareSubExeCtx(ctx context.Context, wb *entity.WorkflowBasic, requireChec
 			return state.SetWorkflowCtx(newC)
 		})
 		if err != nil {
+			logs.Errorf("PrepareSubExeCtx error ProcessState: %v", err)
 			return ctx, err
 		}
 	}
@@ -341,10 +345,10 @@ func PrepareNodeExeCtx(ctx context.Context, nodeKey vo.NodeKey, nodeName string,
 	if c.NodeCtx == nil { // node within top level workflow, also not under composite node
 		newC.NodeCtx.NodePath = []string{string(nodeKey)}
 	} else {
-		if c.BatchInfo == nil {
-			newC.NodeCtx.NodePath = append(c.NodeCtx.NodePath, string(nodeKey))
-		} else {
+		if c.BatchInfo != nil && c.BatchInfo.CompositeNodeKey == c.NodeCtx.NodeKey {
 			newC.NodeCtx.NodePath = append(c.NodeCtx.NodePath, InterruptEventIndexPrefix+strconv.Itoa(c.BatchInfo.Index), string(nodeKey))
+		} else {
+			newC.NodeCtx.NodePath = append(c.NodeCtx.NodePath, string(nodeKey))
 		}
 	}
 

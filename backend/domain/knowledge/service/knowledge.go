@@ -466,6 +466,9 @@ func (k *knowledgeSVC) ListDocument(ctx context.Context, request *ListDocumentRe
 	if request.KnowledgeID != 0 {
 		opts.KnowledgeIDs = []int64{request.KnowledgeID}
 	}
+	if request.Keyword != nil {
+		opts.Name = request.Keyword
+	}
 	if request.SelectAll {
 		opts.SelectAll = true
 	}
@@ -1502,4 +1505,46 @@ func (k *knowledgeSVC) genMultiIDs(ctx context.Context, counts int) ([]int64, er
 		allIDs = append(allIDs, ids...)
 	}
 	return allIDs, nil
+}
+
+func (k *knowledgeSVC) MGetSlice(ctx context.Context, request *MGetSliceRequest) (response *MGetSliceResponse, err error) {
+	slices, err := k.sliceRepo.MGetSlices(ctx, request.SliceIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*entity.Slice
+	for _, slice := range slices {
+		if slice != nil {
+			result = append(result, k.fromModelSlice(ctx, slice))
+		}
+	}
+
+	return &MGetSliceResponse{
+		Slices: result,
+	}, nil
+}
+
+func (k *knowledgeSVC) MGetDocument(ctx context.Context, request *MGetDocumentRequest) (response *MGetDocumentResponse, err error) {
+	documents, err := k.documentRepo.MGetByID(ctx, request.DocumentIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*entity.Document
+	for _, doc := range documents {
+		if doc != nil {
+			docEntity, err := k.fromModelDocument(ctx, doc)
+			if err != nil {
+				return nil, err
+			}
+			if docEntity != nil {
+				result = append(result, docEntity)
+			}
+		}
+	}
+
+	return &MGetDocumentResponse{
+		Documents: result,
+	}, nil
 }

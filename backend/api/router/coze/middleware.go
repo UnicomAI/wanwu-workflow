@@ -1639,3 +1639,123 @@ func _retrieveconversationapiMw() []app.HandlerFunc {
 	// your code...
 	return nil
 }
+
+func _retrievechatopenMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _chat0Mw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _message0Mw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _listchatmessageapiMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _open_apiMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _knowledge1Mw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _document0Mw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _createdocumentopenapiMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _listdocumentopenapiMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _updatedocumentopenapiMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _datasetsMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _listdatasetopenapiMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _dataset_idMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _deletedatasetopenapiMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _listphotodocumentopenapiMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _getdocumentprogressopenapiMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _updatedatasetopenapiMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _createdatasetopenapiMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _oauth0Mw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _pluginoauthconfirmMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _pluginoauthinfoMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _plugin_oauthMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _plugin_idMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}
+
+func _pluginoauthauthorizationcodeMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}

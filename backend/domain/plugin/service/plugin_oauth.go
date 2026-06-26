@@ -20,11 +20,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 
 	common "github.com/coze-dev/coze-studio/backend/api/model/plugin_develop/common"
@@ -38,6 +40,7 @@ import (
 	"github.com/coze-dev/coze-studio/backend/pkg/lang/conv"
 	"github.com/coze-dev/coze-studio/backend/pkg/lang/ptr"
 	"github.com/coze-dev/coze-studio/backend/pkg/logs"
+	"github.com/coze-dev/coze-studio/backend/pkg/sonic"
 	"github.com/coze-dev/coze-studio/backend/pkg/taskgroup"
 	"github.com/coze-dev/coze-studio/backend/types/errno"
 )
@@ -47,6 +50,17 @@ var (
 	lastActiveInterval = 15 * 24 * time.Hour
 	failedCache        = sync.Map{}
 )
+
+const (
+	oauthNonceKeyPrefix       = "oauth_state_nonce:"
+	oauthNonceTTL             = 10 * time.Minute
+	oauthConfirmCodeKeyPrefix = "oauth_confirm_code:"
+	oauthConfirmCodeTTL       = 3 * time.Minute
+)
+
+func makeConfirmCodeKey(confirmCode string) string {
+	return oauthConfirmCodeKeyPrefix + confirmCode
+}
 
 func (p *pluginServiceImpl) processOAuthAccessToken(ctx context.Context) {
 	const (
@@ -275,7 +289,18 @@ func isValidAuthCodeConfig(o, n *model.OAuthAuthorizationCodeConfig, expireAt, l
 }
 
 func (p *pluginServiceImpl) OAuthCode(ctx context.Context, code string, state *dto.OAuthState) (err error) {
+	if err = p.validateOAuthNonce(ctx, state); err != nil {
+		return err
+	}
+
+	return p.exchangeAndSaveToken(ctx, code, state)
+}
+
+// exchangeAndSaveToken handles the core OAuth token exchange and storage.
+// It is used by both the legacy OAuthCode flow and the new two-step confirmation flow.
+func (p *pluginServiceImpl) exchangeAndSaveToken(ctx context.Context, code string, state *dto.OAuthState) error {
 	var plugin *entity.PluginInfo
+	var err error
 	if state.IsDraft {
 		plugin, err = p.GetDraftPlugin(ctx, state.PluginID)
 	} else {
@@ -293,12 +318,12 @@ func (p *pluginServiceImpl) OAuthCode(ctx context.Context, code string, state *d
 		return errorx.New(errno.ErrPluginOAuthFailed, errorx.KV(errno.PluginMsgKey, "plugin auth info is nil"))
 	}
 
-	config, err := getStanderOAuthConfig(ctx, authInfo.AuthOfOAuthAuthorizationCode)
+	oauthConfig, err := getStanderOAuthConfig(ctx, authInfo.AuthOfOAuthAuthorizationCode, state.PluginID)
 	if err != nil {
 		return errorx.Wrapf(err, "getStanderOAuthConfig failed, pluginID=%d", state.PluginID)
 	}
 
-	token, err := config.Exchange(ctx, code)
+	token, err := oauthConfig.Exchange(ctx, code)
 	if err != nil {
 		return errorx.WrapByCode(err, errno.ErrPluginOAuthFailed, errorx.KV(errno.PluginMsgKey, "exchange token failed"))
 	}
@@ -331,6 +356,132 @@ func (p *pluginServiceImpl) OAuthCode(ctx context.Context, code string, state *d
 	}
 
 	return nil
+}
+
+// PluginOauthCallback handles the OAuth provider's callback.
+// It validates the state/nonce, verifies pluginID matches, and stores a temporary
+// confirm_code in Redis instead of immediately completing the token exchange.
+func (p *pluginServiceImpl) PluginOauthCallback(ctx context.Context, code, stateStr, pluginID string) (confirmCode string, err error) {
+	stateDecoded, err := url.QueryUnescape(stateStr)
+	if err != nil {
+		return "", errorx.WrapByCode(err, errno.ErrPluginOAuthFailed, errorx.KV(errno.PluginMsgKey, "invalid state"))
+	}
+
+	secret := os.Getenv(encrypt.StateSecretEnv)
+	if secret == "" {
+		secret = encrypt.DefaultStateSecret
+	}
+
+	stateBytes, err := encrypt.DecryptByAES(stateDecoded, secret)
+	if err != nil {
+		return "", errorx.WrapByCode(err, errno.ErrPluginOAuthFailed, errorx.KV(errno.PluginMsgKey, "invalid state"))
+	}
+
+	state := &dto.OAuthState{}
+	if err = sonic.Unmarshal(stateBytes, state); err != nil {
+		return "", errorx.WrapByCode(err, errno.ErrPluginOAuthFailed, errorx.KV(errno.PluginMsgKey, "invalid state"))
+	}
+
+	// Verify pluginID from URL path matches state to prevent CSRF
+	if fmt.Sprintf("%d", state.PluginID) != pluginID {
+		return "", errorx.New(errno.ErrPluginOAuthFailed, errorx.KV(errno.PluginMsgKey, "plugin_id mismatch"))
+	}
+
+	if err = p.validateOAuthNonce(ctx, state); err != nil {
+		return "", err
+	}
+
+	// Generate confirm_code and store in Redis
+	confirmCode = uuid.New().String()
+	data := &dto.PluginOauthConfirmData{
+		State:    state,
+		AuthCode: code,
+	}
+	dataBytes, err := sonic.Marshal(data)
+	if err != nil {
+		return "", errorx.Wrapf(err, "marshal confirm data failed")
+	}
+
+	key := makeConfirmCodeKey(confirmCode)
+	ttl := oauthConfirmCodeTTL
+	if err = p.oauthCache.Set(ctx, key, string(dataBytes), &ttl); err != nil {
+		return "", errorx.Wrapf(err, "save confirm code failed")
+	}
+
+	return confirmCode, nil
+}
+
+// GetPluginOauthInfo retrieves plugin information for the OAuth confirmation page.
+func (p *pluginServiceImpl) GetPluginOauthInfo(ctx context.Context, confirmCode string) (*dto.PluginOauthConfirmInfo, error) {
+	data, err := p.getConfirmData(ctx, confirmCode)
+	if err != nil {
+		return nil, err
+	}
+
+	state := data.State
+	var plugin *entity.PluginInfo
+	if state.IsDraft {
+		plugin, err = p.GetDraftPlugin(ctx, state.PluginID)
+	} else {
+		plugin, err = p.GetOnlinePlugin(ctx, state.PluginID)
+	}
+	if err != nil {
+		return nil, errorx.Wrapf(err, "GetPlugin failed, pluginID=%d", state.PluginID)
+	}
+
+	iconURL := ""
+	if plugin.GetIconURI() != "" {
+		iconURL, _ = p.oss.GetObjectUrl(ctx, plugin.GetIconURI())
+	}
+
+	return &dto.PluginOauthConfirmInfo{
+		PluginID:    conv.Int64ToStr(state.PluginID),
+		PluginName:  plugin.GetName(),
+		PluginIcon:  iconURL,
+		StateUserID: conv.StrToInt64D(state.UserID, 0),
+	}, nil
+}
+
+// ConfirmPluginOauth completes the OAuth flow after user confirmation.
+// It uses currentUserID from the session (not from the original state) to prevent phishing.
+func (p *pluginServiceImpl) ConfirmPluginOauth(ctx context.Context, confirmCode string, currentUserID int64) error {
+	data, err := p.getConfirmData(ctx, confirmCode)
+	if err != nil {
+		return err
+	}
+
+	// Delete confirm code from Redis (one-time use)
+	key := makeConfirmCodeKey(confirmCode)
+	_ = p.oauthCache.Del(ctx, key)
+
+	// Override userID with the currently logged-in user to prevent phishing attacks
+	state := data.State
+	state.UserID = conv.Int64ToStr(currentUserID)
+
+	return p.exchangeAndSaveToken(ctx, data.AuthCode, state)
+}
+
+// getConfirmData retrieves and parses the confirm data from Redis.
+func (p *pluginServiceImpl) getConfirmData(ctx context.Context, confirmCode string) (*dto.PluginOauthConfirmData, error) {
+	if confirmCode == "" {
+		return nil, errorx.New(errno.ErrPluginOAuthFailed, errorx.KV(errno.PluginMsgKey, "confirm_code is required"))
+	}
+
+	key := makeConfirmCodeKey(confirmCode)
+	dataStr, exist, err := p.oauthCache.Get(ctx, key)
+	if err != nil {
+		return nil, errorx.Wrapf(err, "get confirm code failed")
+	}
+	if !exist {
+		return nil, errorx.New(errno.ErrPluginOAuthFailed, errorx.KV(errno.PluginMsgKey, "invalid or expired confirm_code"))
+	}
+
+	data := &dto.PluginOauthConfirmData{}
+	if err = sonic.Unmarshal([]byte(dataStr), data); err != nil {
+		return nil, errorx.Wrapf(err, "unmarshal confirm data failed")
+	}
+
+	return data, nil
 }
 
 func (p *pluginServiceImpl) saveAccessToken(ctx context.Context, oa *dto.OAuthInfo) (err error) {
@@ -430,7 +581,12 @@ func (p *pluginServiceImpl) getPluginOAuthStatus(ctx context.Context, userID int
 
 	needAuth = accessToken == ""
 
-	authURL, err = genAuthURL(ctx, authCode)
+	nonce, err := p.generateOAuthNonce(ctx, authCode.Meta.UserID)
+	if err != nil {
+		return false, "", err
+	}
+
+	authURL, err = genAuthURL(ctx, authCode, nonce)
 	if err != nil {
 		return false, "", err
 	}
@@ -438,8 +594,8 @@ func (p *pluginServiceImpl) getPluginOAuthStatus(ctx context.Context, userID int
 	return needAuth, authURL, nil
 }
 
-func genAuthURL(ctx context.Context, info *dto.AuthorizationCodeInfo) (string, error) {
-	config, err := getStanderOAuthConfig(ctx, info.Config)
+func genAuthURL(ctx context.Context, info *dto.AuthorizationCodeInfo, nonce string) (string, error) {
+	config, err := getStanderOAuthConfig(ctx, info.Config, info.Meta.PluginID)
 	if err != nil {
 		return "", err
 	}
@@ -449,6 +605,7 @@ func genAuthURL(ctx context.Context, info *dto.AuthorizationCodeInfo) (string, e
 		UserID:     info.Meta.UserID,
 		PluginID:   info.Meta.PluginID,
 		IsDraft:    info.Meta.IsDraft,
+		Nonce:      nonce,
 	}
 	stateStr, err := json.Marshal(state)
 	if err != nil {
@@ -470,7 +627,39 @@ func genAuthURL(ctx context.Context, info *dto.AuthorizationCodeInfo) (string, e
 	return authURL, nil
 }
 
-func getStanderOAuthConfig(ctx context.Context, authConfig *model.OAuthAuthorizationCodeConfig) (*oauth2.Config, error) {
+func (p *pluginServiceImpl) generateOAuthNonce(ctx context.Context, userID string) (string, error) {
+	nonce := uuid.New().String()
+	key := oauthNonceKeyPrefix + nonce
+	ttl := oauthNonceTTL
+	err := p.oauthCache.Set(ctx, key, userID, &ttl)
+	if err != nil {
+		return "", fmt.Errorf("save oauth nonce failed, err=%v", err)
+	}
+	return nonce, nil
+}
+
+func (p *pluginServiceImpl) validateOAuthNonce(ctx context.Context, state *dto.OAuthState) error {
+	if state.Nonce == "" {
+		return errorx.New(errno.ErrPluginOAuthFailed, errorx.KV(errno.PluginMsgKey, "invalid or expired state"))
+	}
+
+	key := oauthNonceKeyPrefix + state.Nonce
+	storedUserID, exist, err := p.oauthCache.Get(ctx, key)
+	if err != nil {
+		return errorx.Wrapf(err, "get oauth nonce failed")
+	}
+	if !exist {
+		return errorx.New(errno.ErrPluginOAuthFailed, errorx.KV(errno.PluginMsgKey, "invalid or expired state"))
+	}
+	if storedUserID != state.UserID {
+		return errorx.New(errno.ErrPluginOAuthFailed, errorx.KV(errno.PluginMsgKey, "invalid state"))
+	}
+
+	_ = p.oauthCache.Del(ctx, key)
+	return nil
+}
+
+func getStanderOAuthConfig(ctx context.Context, authConfig *model.OAuthAuthorizationCodeConfig, pluginID int64) (*oauth2.Config, error) {
 	if authConfig == nil {
 		return nil, nil
 	}
@@ -487,7 +676,7 @@ func getStanderOAuthConfig(ctx context.Context, authConfig *model.OAuthAuthoriza
 			TokenURL: authConfig.AuthorizationURL,
 			AuthURL:  authConfig.ClientURL,
 		},
-		RedirectURL: fmt.Sprintf("%s/api/oauth/authorization_code", host),
+		RedirectURL: fmt.Sprintf("%s/api/plugin_oauth/%d/authorization_code", host, pluginID),
 		Scopes:      strings.Split(authConfig.Scope, " "),
 	}, nil
 }

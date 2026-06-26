@@ -30,6 +30,8 @@ import (
 	coze_cross_upload "github.com/coze-dev/coze-studio/backend/crossdomain/upload"
 	coze_cross_upload_impl "github.com/coze-dev/coze-studio/backend/crossdomain/upload/impl"
 	coze_cross_user "github.com/coze-dev/coze-studio/backend/crossdomain/user"
+	coze_cross_workflow "github.com/coze-dev/coze-studio/backend/crossdomain/workflow"
+	coze_cross_workflow_impl "github.com/coze-dev/coze-studio/backend/crossdomain/workflow/impl"
 	coze_conversation_agentrun_repo "github.com/coze-dev/coze-studio/backend/domain/conversation/agentrun/repository"
 	coze_conversation_agentrun "github.com/coze-dev/coze-studio/backend/domain/conversation/agentrun/service"
 	coze_conversation_conversation_repo "github.com/coze-dev/coze-studio/backend/domain/conversation/conversation/repository"
@@ -143,7 +145,8 @@ func Init(ctx context.Context, infra Infra) error {
 	// init cross domain upload
 	coze_cross_upload.SetDefaultWanwuSVC(coze_cross_upload_impl.NewWanwuUploader(infra.Storage))
 	coze_cross_upload.SetDefaultSVC(coze_cross_upload_impl.InitDomainService(cozeUploadSVC))
-
+	// init cross domain workflow
+	coze_cross_workflow.SetDefaultSVC(coze_cross_workflow_impl.InitDomainService(_workflowService))
 	// init cross domain database
 	coze_cross_database.SetDefaultSVC(coze_cross_database_impl.InitDomainService(databaseDomainSVC))
 	// init token callback handler

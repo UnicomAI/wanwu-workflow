@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/coze-dev/coze-studio/backend/api/model/app/developer_api"
-	crossupload "github.com/coze-dev/coze-studio/backend/crossdomain/upload"
+	"github.com/coze-dev/coze-studio/backend/crossdomain/upload"
 	"github.com/coze-dev/coze-studio/backend/infra/storage"
 	"github.com/google/uuid"
 )
@@ -14,13 +14,13 @@ type wanwuUploader struct {
 	oss storage.Storage
 }
 
-func NewWanwuUploader(oss storage.Storage) crossupload.WanwuUploader {
+func NewWanwuUploader(oss storage.Storage) upload.WanwuUploader {
 	return &wanwuUploader{
 		oss: oss,
 	}
 }
 
-func (s *wanwuUploader) UploadFileByByte(ctx context.Context, fileName string, data []byte) (*crossupload.UploadFileResp, error) {
+func (s *wanwuUploader) UploadFileByByte(ctx context.Context, fileName string, data []byte) (*upload.UploadFileResp, error) {
 	var BizType developer_api.FileBizType = 0
 	objectName := fmt.Sprintf("%s/%s/%s", BizType.String(), uuid.New().String(), fileName)
 
@@ -34,7 +34,7 @@ func (s *wanwuUploader) UploadFileByByte(ctx context.Context, fileName string, d
 		return nil, err
 	}
 
-	return &crossupload.UploadFileResp{
+	return &upload.UploadFileResp{
 		URL: url,
 		URI: objectName,
 	}, nil

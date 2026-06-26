@@ -17,7 +17,7 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 RUN apk add --no-cache pax-utils python3 python3-dev bind-tools file deno curl
 
 ENV DENO_DIR=/app/.deno
-RUN deno run -A jsr:@eyurtsev/pyodide-sandbox -c "print('Hello, World')" && \
+RUN deno run -A jsr:@langchain/pyodide-sandbox -c "print('Hello, World')" && \
     deno cache jsr:@langchain/pyodide-sandbox@0.0.4
 
 

@@ -24,8 +24,10 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"regexp"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/tealeg/xlsx/v3"
@@ -1045,6 +1047,10 @@ func (d databaseService) executeCustomSQL(ctx context.Context, req *ExecuteSQLRe
 		return nil, fmt.Errorf("SQL is empty")
 	}
 
+	if err := validateCustomSQL(*req.SQL); err != nil {
+		return nil, fmt.Errorf("SQL validation failed: %v", err)
+	}
+
 	operation, err := sqlparser.New().GetSQLOperation(*req.SQL)
 	if err != nil {
 		return nil, err
@@ -1075,6 +1081,10 @@ func (d databaseService) executeCustomSQL(ctx context.Context, req *ExecuteSQLRe
 	parsedSQL, err := sqlparser.New().ParseAndModifySQL(*req.SQL, tableColumnMapping)
 	if err != nil {
 		return nil, fmt.Errorf("parse sql failed: %v", err)
+	}
+
+	if err := validateParsedSQL(parsedSQL); err != nil {
+		return nil, fmt.Errorf("SQL validation failed: %v", err)
 	}
 	// add rw mode
 	if tableInfo.RwMode == table.BotTableRWMode_LimitedReadWrite && len(req.UserID) != 0 {
@@ -2188,4 +2198,58 @@ func generateComplexCond(ctx context.Context, req *ExecuteSQLRequest, mode table
 
 	return nil, nil
 
+}
+
+var allowedTableNamePattern = regexp.MustCompile(`^table_\d+$`)
+
+
+func validateCustomSQL(sql string) error {
+	upperSQL := strings.ToUpper(sql)
+
+	if strings.Contains(upperSQL, "UNION") {
+		return fmt.Errorf("UNION queries are not allowed")
+	}
+
+	if strings.Contains(upperSQL, "JOIN") {
+		return fmt.Errorf("JOIN queries are not allowed")
+	}
+
+	dangerousTables := []string{"INFORMATION_SCHEMA", "MYSQL.", "PERFORMANCE_SCHEMA", "SYS."}
+	for _, t := range dangerousTables {
+		if strings.Contains(upperSQL, t) {
+			return fmt.Errorf("access to system tables is not allowed")
+		}
+	}
+
+	dangerousFuncs := []string{
+		"CURRENT_USER", "USER()", "SESSION_USER", "SYSTEM_USER",
+		"LOAD_FILE", "INTO OUTFILE", "INTO DUMPFILE",
+		"BENCHMARK(", "SLEEP(",
+	}
+	for _, f := range dangerousFuncs {
+		if strings.Contains(upperSQL, f) {
+			return fmt.Errorf("dangerous function %s is not allowed", f)
+		}
+	}
+
+	return nil
+}
+
+func validateParsedSQL(parsedSQL string) error {
+	tableNamePattern := regexp.MustCompile(`(?i)\b(FROM|JOIN|INTO|UPDATE)\s+` + "`?" + `(\w+)` + "`?")
+	matches := tableNamePattern.FindAllStringSubmatch(parsedSQL, -1)
+
+	for _, match := range matches {
+		if len(match) >= 3 {
+			tableName := match[2]
+			if tableName == "dual" || tableName == "DUAL" {
+				continue
+			}
+			if !allowedTableNamePattern.MatchString(tableName) {
+				return fmt.Errorf("invalid table name: %s, only table_<id> format is allowed", tableName)
+			}
+		}
+	}
+
+	return nil
 }

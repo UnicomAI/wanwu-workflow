@@ -1,4 +1,4 @@
-package crossupload
+package upload
 
 import (
 	"context"

@@ -32,6 +32,10 @@ func (u *mock) GetUserSpaceList(ctx context.Context, userID int64) (spaces []*en
 	}, nil
 }
 
+func (u *mock) GetUserSpaceBySpaceID(ctx context.Context, spaceID []int64) (space []*entity.Space, err error) {
+	panic("not implemented")
+}
+
 func (u *mock) GetSpaceListV2(ctx context.Context, req *playground.GetSpaceListV2Request) (
 	resp *playground.GetSpaceListV2Response, err error,
 ) {

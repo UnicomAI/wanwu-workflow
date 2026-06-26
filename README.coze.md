@@ -58,7 +58,7 @@ Deployment steps:
    # for macOS or Linux
    make web  
    # for windows
-   cp .env.example .env
+   cp ./docker/.env.example ./docker/.env
    docker compose -f ./docker/docker-compose.yml up
    ```
 

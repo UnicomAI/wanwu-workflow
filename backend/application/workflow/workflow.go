@@ -45,9 +45,11 @@ import (
 	"github.com/coze-dev/coze-studio/backend/bizpkg/debugutil"
 	crossknowledge "github.com/coze-dev/coze-studio/backend/crossdomain/knowledge"
 	model "github.com/coze-dev/coze-studio/backend/crossdomain/knowledge/model"
+	crosspermission "github.com/coze-dev/coze-studio/backend/crossdomain/permission"
 	pluginConsts "github.com/coze-dev/coze-studio/backend/crossdomain/plugin/consts"
 	crossuser "github.com/coze-dev/coze-studio/backend/crossdomain/user"
 	workflowModel "github.com/coze-dev/coze-studio/backend/crossdomain/workflow/model"
+	"github.com/coze-dev/coze-studio/backend/domain/permission"
 	"github.com/coze-dev/coze-studio/backend/domain/plugin/dto"
 	search "github.com/coze-dev/coze-studio/backend/domain/search/entity"
 	domainWorkflow "github.com/coze-dev/coze-studio/backend/domain/workflow"
@@ -89,6 +91,26 @@ func GetWorkflowDomainSVC() domainWorkflow.Service {
 }
 
 func (w *ApplicationService) InitNodeIconURLCache(ctx context.Context) error {
+	if err := w.refreshNodeIconURLCache(ctx); err != nil {
+		return err
+	}
+	safego.Go(ctx, func() {
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if err := w.refreshNodeIconURLCache(context.Background()); err != nil {
+					logs.Errorf("failed to refresh node icon url cache: %v", err)
+				}
+			}
+		}
+	})
+
+	return nil
+}
+
+func (w *ApplicationService) refreshNodeIconURLCache(ctx context.Context) error {
 	category2NodeMetaList, _, err := GetWorkflowDomainSVC().ListNodeMeta(ctx, nil)
 	if err != nil {
 		logs.Errorf("failed to list node meta for icon url cache: %v", err)
@@ -98,13 +120,14 @@ func (w *ApplicationService) InitNodeIconURLCache(ctx context.Context) error {
 	eg, gCtx := errgroup.WithContext(ctx)
 	for _, nodeMetaList := range category2NodeMetaList {
 		for _, nodeMeta := range nodeMetaList {
+			nodeMeta := nodeMeta
 			eg.Go(func() error {
 				if len(nodeMeta.IconURI) == 0 {
 					// For custom nodes, if IconURI is not set, there will be no icon.
 					logs.Warnf("node '%s' has an empty IconURI, it will have no icon", nodeMeta.Name)
 					return nil
 				}
-				url, err := w.TosClient.GetObjectUrl(gCtx, nodeMeta.IconURI)
+				url, err := w.TosClient.GetObjectUrl(gCtx, nodeMeta.IconURI, storage.WithExpire(int64(time.Hour.Seconds())))
 				if err != nil {
 					logs.Warnf("failed to get object url for node %s: %v", nodeMeta.Name, err)
 					return err
@@ -124,7 +147,7 @@ func (w *ApplicationService) InitNodeIconURLCache(ctx context.Context) error {
 		return err
 	}
 
-	logs.Infof("node icon url cache initialized with %d entries", len(nodeIconURLCache))
+	logs.Infof("node icon url cache refreshed with %d entries", len(nodeIconURLCache))
 	return nil
 }
 
@@ -1512,6 +1535,12 @@ func (w *ApplicationService) OpenAPIStreamRun(ctx context.Context, req *workflow
 	apiKeyInfo := ctxutil.GetApiAuthFromCtx(ctx)
 	userID := apiKeyInfo.UserID
 
+	runtimeUserID := func() *string {
+		if uID, ok := req.Ext["user_id"]; ok {
+			return ptr.Of(uID)
+		}
+		return nil
+	}()
 	parameters := make(map[string]any)
 	if req.Parameters != nil {
 		err := sonic.UnmarshalString(*req.Parameters, &parameters)
@@ -1556,15 +1585,20 @@ func (w *ApplicationService) OpenAPIStreamRun(ctx context.Context, req *workflow
 	}
 
 	exeCfg := workflowModel.ExecuteConfig{
-		ID:            meta.ID,
-		From:          workflowModel.FromSpecificVersion,
-		Version:       *meta.LatestPublishedVersion,
-		Operator:      userID,
-		Mode:          workflowModel.ExecuteModeRelease,
-		AppID:         appID,
-		AgentID:       agentID,
-		ConnectorID:   connectorID,
-		ConnectorUID:  strconv.FormatInt(userID, 10),
+		ID:          meta.ID,
+		From:        workflowModel.FromSpecificVersion,
+		Version:     *meta.LatestPublishedVersion,
+		Operator:    userID,
+		Mode:        workflowModel.ExecuteModeRelease,
+		AppID:       appID,
+		AgentID:     agentID,
+		ConnectorID: connectorID,
+		ConnectorUID: func() string {
+			if runtimeUserID != nil {
+				return *runtimeUserID
+			}
+			return strconv.FormatInt(userID, 10)
+		}(),
 		TaskType:      workflowModel.TaskTypeForeground,
 		SyncPattern:   workflowModel.SyncPatternStream,
 		InputFailFast: true,
@@ -1623,6 +1657,31 @@ func (w *ApplicationService) OpenAPIStreamResume(ctx context.Context, req *workf
 
 	apiKeyInfo := ctxutil.GetApiAuthFromCtx(ctx)
 	userID := apiKeyInfo.UserID
+	runtimeUserID := func() *string {
+		if uID, ok := req.Ext["user_id"]; ok {
+			return ptr.Of(uID)
+		}
+		return nil
+	}()
+
+	checkResult, err := crosspermission.DefaultSVC().CheckAuthz(ctx, &permission.CheckAuthzData{
+		OperatorID: userID,
+		ResourceIdentifier: []*permission.ResourceIdentifier{
+			{
+				Type:   permission.ResourceTypeWorkflow,
+				ID:     []int64{workflowID},
+				Action: permission.ActionRead,
+			},
+		},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if checkResult.Decision != permission.Allow {
+		return nil, errorx.New(errno.ErrMemoryPermissionCode, errorx.KV("msg", "no permission"))
+	}
 
 	var connectorID int64
 	if req.IsSetConnectorID() {
@@ -1630,11 +1689,16 @@ func (w *ApplicationService) OpenAPIStreamResume(ctx context.Context, req *workf
 	}
 
 	sr, err := GetWorkflowDomainSVC().StreamResume(ctx, resumeReq, workflowModel.ExecuteConfig{
-		Operator:     userID,
-		Mode:         workflowModel.ExecuteModeRelease,
-		ConnectorID:  connectorID,
-		ConnectorUID: strconv.FormatInt(userID, 10),
-		BizType:      workflowModel.BizTypeWorkflow,
+		Operator:    userID,
+		Mode:        workflowModel.ExecuteModeRelease,
+		ConnectorID: connectorID,
+		ConnectorUID: func() string {
+			if runtimeUserID != nil {
+				return *runtimeUserID
+			}
+			return strconv.FormatInt(userID, 10)
+		}(),
+		BizType: workflowModel.BizTypeWorkflow,
 	})
 	if err != nil {
 		return nil, err
@@ -1660,6 +1724,12 @@ func (w *ApplicationService) OpenAPIRun(ctx context.Context, req *workflow.OpenA
 
 	apiKeyInfo := ctxutil.GetApiAuthFromCtx(ctx)
 	userID := apiKeyInfo.UserID
+	runtimeUserID := func() *string {
+		if uID, ok := req.Ext["user_id"]; ok {
+			return ptr.Of(uID)
+		}
+		return nil
+	}()
 
 	parameters := make(map[string]any)
 	if req.Parameters != nil {
@@ -1705,15 +1775,20 @@ func (w *ApplicationService) OpenAPIRun(ctx context.Context, req *workflow.OpenA
 	}
 
 	exeCfg := workflowModel.ExecuteConfig{
-		ID:            meta.ID,
-		From:          workflowModel.FromSpecificVersion,
-		Version:       *meta.LatestPublishedVersion,
-		Operator:      userID,
-		Mode:          workflowModel.ExecuteModeRelease,
-		AppID:         appID,
-		AgentID:       agentID,
-		ConnectorID:   connectorID,
-		ConnectorUID:  strconv.FormatInt(userID, 10),
+		ID:          meta.ID,
+		From:        workflowModel.FromSpecificVersion,
+		Version:     *meta.LatestPublishedVersion,
+		Operator:    userID,
+		Mode:        workflowModel.ExecuteModeRelease,
+		AppID:       appID,
+		AgentID:     agentID,
+		ConnectorID: connectorID,
+		ConnectorUID: func() string {
+			if runtimeUserID != nil {
+				return *runtimeUserID
+			}
+			return strconv.FormatInt(userID, 10)
+		}(),
 		InputFailFast: true,
 		BizType:       workflowModel.BizTypeWorkflow,
 	}

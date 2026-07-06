@@ -32,6 +32,7 @@ import {
 import { I18n } from '@coze-arch/i18n';
 import { IconCozPlayFill } from '@coze-arch/coze-design/icons';
 import { Button, Toast, Typography } from '@coze-arch/coze-design';
+import { isRunPage } from '@coze-workflow/base';
 
 import { type WorkflowNodeEntity } from '@/test-run-kit';
 import { useValidateWorkflow } from '@/hooks/use-validate-workflow';
@@ -159,7 +160,7 @@ export const ChatFlowTestForm: React.FC<TestWorkflowFormPanelProps> = ({
               testRunChatFlowV3();
             }}
           >
-            {I18n.t('wf_chatflow_75')}
+            {isRunPage() ? I18n.t('wf_chatflow_75_runPage') : I18n.t('wf_chatflow_75')}
           </Button>
         }
         ref={panelRef}

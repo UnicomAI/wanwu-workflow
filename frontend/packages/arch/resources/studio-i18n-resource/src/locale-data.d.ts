@@ -15369,6 +15369,7 @@ export type I18nKeysNoOptionsType =
   | 'wf_chatflow_73'
   | 'wf_chatflow_74'
   | 'wf_chatflow_75'
+  | 'wf_chatflow_75_runPage'
   | 'wf_chatflow_76'
   | 'wf_chatflow_81'
   | 'wf_chatflow_82'

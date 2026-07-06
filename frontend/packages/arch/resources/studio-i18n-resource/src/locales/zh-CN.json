@@ -15274,6 +15274,7 @@
   "wf_chatflow_73": "选择你需要的智能体或者应用",
   "wf_chatflow_74": "选择会话",
   "wf_chatflow_75": "保存并开始对话调试",
+  "wf_chatflow_75_runPage": "保存并开始对话",
   "wf_chatflow_76": "对话流",
   "wf_chatflow_81": "创建对话流",
   "wf_chatflow_82": "创建同名会话，且该会话会作为对话流的CONVERSATION_NAME入参的默认值",

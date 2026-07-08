@@ -19,6 +19,7 @@ import (
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/schema"
 	"github.com/coze-dev/coze-studio/backend/application/base/ctxutil"
+	"github.com/coze-dev/coze-studio/backend/domain/workflow"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/entity"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/entity/vo"
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/internal/canvas/convert"
@@ -57,6 +58,7 @@ type Config struct {
 	KnowledgeInfos  []*RetrieveKnowledgeInfo
 	RetrieveParams  *RetrieveParams
 	ToolParams      *ToolParams
+	SkillIdentities []wanwu_util.SkillIdentity
 }
 
 type RetrieveParams struct {
@@ -165,12 +167,11 @@ func (c *Config) Adapt(ctx context.Context, n *vo.Node, _ ...nodes.AdaptOption) 
 	// 	CanGeneratesStream: true, //声明agent节点支持流式输出
 	// }
 
-	cB, err := json.Marshal(c)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal agent config: %w", err)
+	if redactedCB, rErr := json.Marshal(redactAgentConfig(c)); rErr == nil {
+		logs.CtxDebugf(ctx, "[AgentNode]  agent config: %s", string(redactedCB))
+	} else {
+		logs.CtxWarnf(ctx, "[AgentNode] marshal redacted agent config failed: %v", rErr)
 	}
-
-	logs.CtxDebugf(ctx, "[AgentNode]  agent config: %s", string(cB))
 	return ns, nil
 }
 
@@ -410,25 +411,9 @@ func (c *Config) setToolConfig(ctx context.Context, inputs *vo.Inputs) error {
 			SkillType: skillParam.SkillType,
 		})
 	}
-	if len(skillIdentities) > 0 {
-		skillInfos, err := wanwu_util.FetchSkillToolInfoList(ctx, skillIdentities)
-		if err != nil {
-			return fmt.Errorf("skill request failed: %w", err)
-		}
-		c.ToolParams.SkillToolList = make([]*SkillToolInfo, 0, len(skillInfos))
-		for _, info := range skillInfos {
-			c.ToolParams.SkillToolList = append(c.ToolParams.SkillToolList, &SkillToolInfo{
-				SkillId:    info.SkillId,
-				SkillType:  SkillType(info.SkillType),
-				Name:       info.Name,
-				Desc:       info.Desc,
-				Avatar:     info.Avatar,
-				ObjectPath: info.ObjectPath,
-			})
-		}
-	} else {
-		c.ToolParams.SkillToolList = make([]*SkillToolInfo, 0)
-	}
+	c.SkillIdentities = skillIdentities
+	// SkillToolList 在 Invoke/Stream 阶段拉取（需要 workflow owner 身份，Adapt 阶段 ctx 无 execute.Context）
+	c.ToolParams.SkillToolList = make([]*SkillToolInfo, 0)
 
 	return nil
 }
@@ -753,6 +738,7 @@ func (c *Config) Build(ctx context.Context, ns *schema2.NodeSchema, _ ...schema2
 		},
 		KnowledgeParams: buildKnowledgeParams(ctx, c.KnowledgeInfos, c.RetrieveParams),
 		ToolParams:      c.ToolParams,
+		SkillIdentities: c.SkillIdentities,
 		HttpClient: &http.Client{
 			Transport: http_client.GetClient().Client.Transport,
 		},
@@ -790,6 +776,7 @@ type AgentNode struct {
 	ModelParams     *ModelParams
 	KnowledgeParams *KnowledgeParams
 	ToolParams      *ToolParams
+	SkillIdentities []wanwu_util.SkillIdentity
 	HttpClient      *http.Client
 }
 
@@ -871,12 +858,64 @@ type MCPToolInfo struct {
 type SkillType string
 
 type SkillToolInfo struct {
-	SkillId    string    `json:"skillId"`
-	SkillType  SkillType `json:"skillType"`
-	Name       string    `json:"name"`
-	Desc       string    `json:"desc"`
-	Avatar     string    `json:"avatar"`
-	ObjectPath string    `json:"objectPath"`
+	SkillId    string                     `json:"skillId"`
+	SkillType  SkillType                  `json:"skillType"`
+	Name       string                     `json:"name"`
+	Desc       string                     `json:"desc"`
+	Avatar     string                     `json:"avatar"`
+	ObjectPath string                     `json:"objectPath"`
+	Variables  []wanwu_util.SkillVariable `json:"variables,omitempty"`
+}
+
+// redactAgentChatRequest 返回 req 的浅拷贝副本，其中 SkillToolList 内的 VariableValue 被替换为 "<redacted>"
+// 用于请求体日志打印，避免敏感变量值进入日志（安全约束：VariableValue 不得进入 LLM 上下文 / 日志）
+func redactAgentChatRequest(req *AgentChatRequest) *AgentChatRequest {
+	if req == nil {
+		return nil
+	}
+	cloned := *req
+	cloned.ToolParams = redactToolParams(req.ToolParams)
+	return &cloned
+}
+
+// redactAgentConfig 与 redactAgentChatRequest 同理，用于 Config（Adapt 阶段日志）
+func redactAgentConfig(c *Config) *Config {
+	if c == nil {
+		return nil
+	}
+	cloned := *c
+	cloned.ToolParams = redactToolParams(c.ToolParams)
+	return &cloned
+}
+
+// redactToolParams 返回 tp 的浅拷贝副本，其中 SkillToolList 内的 VariableValue 被替换为 "<redacted>"
+func redactToolParams(tp *ToolParams) *ToolParams {
+	if tp == nil {
+		return nil
+	}
+	cloned := *tp
+	if len(cloned.SkillToolList) == 0 {
+		return &cloned
+	}
+	redactedList := make([]*SkillToolInfo, len(cloned.SkillToolList))
+	for i, s := range cloned.SkillToolList {
+		if s == nil {
+			redactedList[i] = nil
+			continue
+		}
+		rc := *s
+		if len(rc.Variables) > 0 {
+			redactedVars := make([]wanwu_util.SkillVariable, len(rc.Variables))
+			for j, v := range rc.Variables {
+				redactedVars[j] = v
+				redactedVars[j].VariableValue = "<redacted>"
+			}
+			rc.Variables = redactedVars
+		}
+		redactedList[i] = &rc
+	}
+	cloned.SkillToolList = redactedList
+	return &cloned
 }
 
 type EventData struct {
@@ -914,13 +953,18 @@ func (a *AgentNode) Invoke(ctx context.Context, input map[string]any) (map[strin
 		return nil, errors.New("input field is required and must be a string")
 	}
 
+	toolParams, err := a.prepareToolParams(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	req := &AgentChatRequest{
 		Input:           inputText,
 		Stream:          true,
 		AgentBaseParams: a.AgentBaseParams,
 		ModelParams:     a.ModelParams,
 		KnowledgeParams: a.KnowledgeParams,
-		ToolParams:      a.ToolParams,
+		ToolParams:      toolParams,
 	}
 
 	uploadFileUrl, ok := input["file"].(string)
@@ -928,8 +972,11 @@ func (a *AgentNode) Invoke(ctx context.Context, input map[string]any) (map[strin
 		req.UploadFile = append(req.UploadFile, uploadFileUrl)
 	}
 
-	reqBytes, _ := json.Marshal(req)
-	logs.CtxDebugf(ctx, "[AgentNode] Built invoke request: %s", string(reqBytes))
+	if redactedBytes, rErr := json.Marshal(redactAgentChatRequest(req)); rErr == nil {
+		logs.CtxDebugf(ctx, "[AgentNode] Built invoke request: %s", string(redactedBytes))
+	} else {
+		logs.CtxWarnf(ctx, "[AgentNode] marshal redacted invoke request failed: %v", rErr)
+	}
 
 	finalResult, err := a.callAgentService(ctx, req)
 	if err != nil {
@@ -973,13 +1020,18 @@ func (a *AgentNode) Stream(ctx context.Context, input map[string]any) (*schema.S
 		return nil, errors.New("input field is required and must be a string")
 	}
 
+	toolParams, err := a.prepareToolParams(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	req := &AgentChatRequest{
 		Input:           inputText,
 		Stream:          true,
 		AgentBaseParams: a.AgentBaseParams,
 		ModelParams:     a.ModelParams,
 		KnowledgeParams: a.KnowledgeParams,
-		ToolParams:      a.ToolParams,
+		ToolParams:      toolParams,
 	}
 
 	uploadFileUrl, ok := input["file"].(string)
@@ -987,8 +1039,11 @@ func (a *AgentNode) Stream(ctx context.Context, input map[string]any) (*schema.S
 		req.UploadFile = append(req.UploadFile, uploadFileUrl)
 	}
 
-	reqBytes, _ := json.Marshal(req)
-	logs.CtxDebugf(ctx, "[AgentNode] Built stream request: %s", string(reqBytes))
+	if redactedBytes, rErr := json.Marshal(redactAgentChatRequest(req)); rErr == nil {
+		logs.CtxDebugf(ctx, "[AgentNode] Built stream request: %s", string(redactedBytes))
+	} else {
+		logs.CtxWarnf(ctx, "[AgentNode] marshal redacted stream request failed: %v", rErr)
+	}
 
 	return a.streamAgentService(ctx, req)
 }
@@ -1095,7 +1150,11 @@ func (a *AgentNode) callAgentService(ctx context.Context, req *AgentChatRequest)
 	}
 
 	agentURL := os.Getenv(WanWuAgentAPIUrlEnv)
-	logs.CtxDebugf(ctx, "[AgentNode] Sending request to %s: %s", agentURL, string(reqBody))
+	if redactedBody, rErr := json.Marshal(redactAgentChatRequest(req)); rErr == nil {
+		logs.CtxDebugf(ctx, "[AgentNode] Sending request to %s: %s", agentURL, string(redactedBody))
+	} else {
+		logs.CtxWarnf(ctx, "[AgentNode] marshal redacted request failed: %v", rErr)
+	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", agentURL, bytes.NewReader(reqBody))
 	if err != nil {
@@ -1233,7 +1292,11 @@ func (a *AgentNode) streamAgentService(ctx context.Context, req *AgentChatReques
 	}
 
 	agentURL := os.Getenv(WanWuAgentAPIUrlEnv)
-	logs.CtxDebugf(ctx, "[AgentNode] Sending streaming request to %s: %s", agentURL, string(reqBody))
+	if redactedBody, rErr := json.Marshal(redactAgentChatRequest(req)); rErr == nil {
+		logs.CtxDebugf(ctx, "[AgentNode] Sending streaming request to %s: %s", agentURL, string(redactedBody))
+	} else {
+		logs.CtxWarnf(ctx, "[AgentNode] marshal redacted streaming request failed: %v", rErr)
+	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", agentURL, bytes.NewReader(reqBody))
 	if err != nil {
@@ -1617,4 +1680,84 @@ func addTokenUsageFromUsage(ctx context.Context, usage map[string]any) {
 	} else {
 		logs.CtxWarnf(ctx, "[AgentNode] No valid token usage found in usage map: %+v", usage)
 	}
+}
+
+// prepareToolParams 在运行时（Invoke/Stream）构造 ToolParams 副本，并拉取 skill 详情（含 per-user variables）
+// 必须在运行时调用：Adapt/Build 阶段 ctx 里没有 execute.Context，拿不到 workflow owner
+func (a *AgentNode) prepareToolParams(ctx context.Context) (*ToolParams, error) {
+	if a.ToolParams == nil {
+		return nil, errors.New("tool params is nil")
+	}
+	tp := *a.ToolParams
+	if len(a.SkillIdentities) == 0 {
+		if tp.SkillToolList == nil {
+			tp.SkillToolList = make([]*SkillToolInfo, 0)
+		}
+		return &tp, nil
+	}
+	ownerUserID, ownerOrgID, err := fetchWorkflowOwnerAsString(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("fetch workflow owner for skill failed: %w", err)
+	}
+	skillInfos, err := wanwu_util.FetchSkillToolInfoList(ctx, a.SkillIdentities, ownerUserID, ownerOrgID)
+	if err != nil {
+		return nil, fmt.Errorf("skill request failed: %w", err)
+	}
+	skillToolList := make([]*SkillToolInfo, 0, len(skillInfos))
+	for _, info := range skillInfos {
+		skillToolList = append(skillToolList, &SkillToolInfo{
+			SkillId:    info.SkillId,
+			SkillType:  SkillType(info.SkillType),
+			Name:       info.Name,
+			Desc:       info.Desc,
+			Avatar:     info.Avatar,
+			ObjectPath: info.ObjectPath,
+			Variables:  info.Variables,
+		})
+	}
+	tp.SkillToolList = skillToolList
+	return &tp, nil
+}
+
+// fetchWorkflowOwnerAsString 返回工作流 owner 的 userId 和 orgId（string）
+// 数据源：wanwu-workflow 本地 workflow_meta 表的 creator_id / space_id
+// 这两列在 CreateWorkflowByWanwu 时写入，等于 wanwu 主仓库的 userId/orgId，不依赖发布状态。
+// 用于 BFF skill callback 请求体里的 userId/orgId 字段——设计文档要求传工作流 owner 身份拉 per-user 变量。
+func fetchWorkflowOwnerAsString(ctx context.Context) (userID, orgID string, err error) {
+	exeCtx := execute.GetExeCtx(ctx)
+	if exeCtx == nil || exeCtx.RootCtx.RootWorkflowBasic == nil {
+		err = errors.New("workflow basic not found in exe ctx")
+		logs.CtxWarnf(ctx, "[AgentNode.fetchWorkflowOwner] failed: %v", err)
+		return "", "", err
+	}
+	wfID := exeCtx.RootCtx.RootWorkflowBasic.ID
+	if wfID == 0 {
+		err = errors.New("workflow id is empty")
+		logs.CtxWarnf(ctx, "[AgentNode.fetchWorkflowOwner] failed: %v", err)
+		return "", "", err
+	}
+	meta, err := workflow.GetRepository().GetMeta(ctx, wfID)
+	if err != nil {
+		err = fmt.Errorf("get workflow meta failed: %w", err)
+		logs.CtxErrorf(ctx, "[AgentNode.fetchWorkflowOwner] workflowID=%d failed: %v", wfID, err)
+		return "", "", err
+	}
+	if meta == nil {
+		err = errors.New("workflow meta is nil")
+		logs.CtxWarnf(ctx, "[AgentNode.fetchWorkflowOwner] workflowID=%d failed: %v", wfID, err)
+		return "", "", err
+	}
+	if meta.CreatorID == 0 {
+		err = errors.New("workflow creator id is empty")
+		logs.CtxWarnf(ctx, "[AgentNode.fetchWorkflowOwner] workflowID=%d failed: %v", wfID, err)
+		return "", "", err
+	}
+	if meta.SpaceID == 0 {
+		err = errors.New("workflow space id is empty")
+		logs.CtxWarnf(ctx, "[AgentNode.fetchWorkflowOwner] workflowID=%d failed: %v", wfID, err)
+		return "", "", err
+	}
+	logs.CtxInfof(ctx, "[AgentNode.fetchWorkflowOwner] workflowID=%d owner userID=%d orgID=%d",
+		wfID, meta.CreatorID, meta.SpaceID)
+	return strconv.FormatInt(meta.CreatorID, 10), strconv.FormatInt(meta.SpaceID, 10), nil
 }

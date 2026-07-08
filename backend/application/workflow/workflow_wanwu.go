@@ -475,12 +475,15 @@ func (w *ApplicationService) GetWorkFlowSelectByWanwu(ctx context.Context, req *
 		}
 	}()
 	userID := ctxutil.MustGetUIDFromCtx(ctx)
+	userIDStr := strconv.FormatInt(userID, 10)
 	status := req.GetStatus()
 	// 调用ListWorkflowByWanwu需要将status置为nil 查询所有的workflow列表
 	// 设置size大小为99999
 	req.Status = nil
 	sizeValue := int32(99999)
 	req.Size = &sizeValue
+	// 该接口用于选择当前用户在万悟平台发布/未发布的工作流，仅查询当前用户创建的 workflow
+	req.LoginUserCreate = ptr.Of(true)
 	resp, err := w.ListWorkflowByWanwu(ctx, req)
 	if err != nil {
 		return nil, err
@@ -540,20 +543,21 @@ func (w *ApplicationService) GetWorkFlowSelectByWanwu(ctx context.Context, req *
 		if status == workflow.WorkFlowListStatus_HadPublished && isPublished {
 			filteredWorkflows = append(filteredWorkflows, wf)
 		}
-		if status == workflow.WorkFlowListStatus_UnPublished && !isPublished {
+		if status == workflow.WorkFlowListStatus_UnPublished && !isPublished &&
+			wf.Creator != nil && wf.Creator.ID == userIDStr {
 			wf.PluginID = "0"
 			filteredWorkflows = append(filteredWorkflows, wf)
 		}
 	}
 	// 过滤AuthList
 	var filteredAuthList []*workflow.ResourceAuthInfo
-	for _, wf := range resp.Data.AuthList {
-		isPublished := publishedWorkflowIDs[wf.WorkflowID]
+	for _, auth := range resp.Data.AuthList {
+		isPublished := publishedWorkflowIDs[auth.WorkflowID]
 		if status == workflow.WorkFlowListStatus_HadPublished && isPublished {
-			filteredAuthList = append(filteredAuthList, wf)
+			filteredAuthList = append(filteredAuthList, auth)
 		}
-		if status == workflow.WorkFlowListStatus_UnPublished && !isPublished {
-			filteredAuthList = append(filteredAuthList, wf)
+		if status == workflow.WorkFlowListStatus_UnPublished && !isPublished && auth.UserID == userIDStr {
+			filteredAuthList = append(filteredAuthList, auth)
 		}
 	}
 	return &workflow.GetWorkFlowListResponse{

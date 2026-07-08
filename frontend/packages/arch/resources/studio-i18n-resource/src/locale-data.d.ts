@@ -16624,6 +16624,7 @@ export type I18nKeysNoOptionsType =
   | 'workflow_version_origin_tooltips'
   | 'workflow_version_update_model_title'
   | 'workflow_version_update_placeholder'
+  | 'workflow_publish_security_risk_tip'
   | 'workflow_version_update_tag'
   | 'workflow_version_update_tag_tooltips'
   | 'workflow_viedo_frame_sampling_configuration'

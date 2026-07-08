@@ -28,16 +28,29 @@ type SkillIdentity struct {
 }
 
 type SkillToolInfo struct {
-	SkillId    string `json:"skillId"`
-	SkillType  string `json:"skillType"`
-	Name       string `json:"name"`
-	Desc       string `json:"desc"`
-	Avatar     string `json:"avatar"`
-	ObjectPath string `json:"objectPath"`
+	SkillId    string          `json:"skillId"`
+	SkillType  string          `json:"skillType"`
+	Name       string          `json:"name"`
+	Desc       string          `json:"desc"`
+	Avatar     string          `json:"avatar"`
+	ObjectPath string          `json:"objectPath"`
+	Variables  []SkillVariable `json:"variables,omitempty"`
+}
+
+// SkillVariable 与 agent-service request.SkillVariable / BFF response.SkillVariable 字段对齐
+// 安全约束：VariableValue 仅允许沿 wanwu-util → wanwu-agent/wanwu-skill → /agent/chat/direct 流动，
+// 不得进入 LLM 上下文（system prompt / SKILL.md / 日志 / SSE 帧）。
+type SkillVariable struct {
+	Name          string `json:"name"`
+	Desc          string `json:"desc"`
+	VariableKey   string `json:"variableKey"`
+	VariableValue string `json:"variableValue"`
 }
 
 type skillListRequest struct {
 	SkillIDList []string `json:"skillIdList"`
+	UserID      string   `json:"userId,omitempty"`
+	OrgID       string   `json:"orgId,omitempty"`
 }
 
 type skillListResponse struct {
@@ -59,6 +72,7 @@ type skillListItem struct {
 	ObjectPath    string          `json:"objectPath"`
 	SkillMarkdown string          `json:"skillMarkdown"`
 	Avatar        skillAvatarInfo `json:"avatar"`
+	Variables     []SkillVariable `json:"variables,omitempty"`
 }
 
 type skillAvatarInfo struct {
@@ -66,7 +80,7 @@ type skillAvatarInfo struct {
 	Path string `json:"path"`
 }
 
-func FetchSkillToolInfoList(ctx context.Context, skills []SkillIdentity) ([]*SkillToolInfo, error) {
+func FetchSkillToolInfoList(ctx context.Context, skills []SkillIdentity, userID, orgID string) ([]*SkillToolInfo, error) {
 	if len(skills) == 0 {
 		return make([]*SkillToolInfo, 0), nil
 	}
@@ -102,7 +116,7 @@ func FetchSkillToolInfoList(ctx context.Context, skills []SkillIdentity) ([]*Ski
 			continue
 		}
 
-		fetched, err := fetchSkillToolInfoMapByType(ctx, skillType, skillIDs)
+		fetched, err := fetchSkillToolInfoMapByType(ctx, skillType, skillIDs, userID, orgID)
 		if err != nil {
 			return nil, err
 		}
@@ -124,13 +138,17 @@ func FetchSkillToolInfoList(ctx context.Context, skills []SkillIdentity) ([]*Ski
 	return result, nil
 }
 
-func fetchSkillToolInfoMapByType(ctx context.Context, skillType string, skillIDs []string) (map[string]*SkillToolInfo, error) {
+func fetchSkillToolInfoMapByType(ctx context.Context, skillType string, skillIDs []string, userID, orgID string) (map[string]*SkillToolInfo, error) {
 	rawURL, err := skillListURL(skillType)
 	if err != nil {
 		return nil, err
 	}
 
-	reqBody := skillListRequest{SkillIDList: skillIDs}
+	reqBody := skillListRequest{
+		SkillIDList: skillIDs,
+		UserID:      userID,
+		OrgID:       orgID,
+	}
 	resp, err := http_client.GetRestyClientWithTimeout(time.Minute).R().
 		SetContext(ctx).
 		SetHeader("Content-Type", "application/json").
@@ -194,6 +212,7 @@ func buildSkillToolInfo(skillType string, item skillListItem) (*SkillToolInfo, e
 		Desc:       item.Desc,
 		Avatar:     strings.TrimSpace(item.Avatar.Key),
 		ObjectPath: objectPath,
+		Variables:  item.Variables,
 	}, nil
 }
 
@@ -239,5 +258,23 @@ func cloneSkillToolInfo(info *SkillToolInfo) *SkillToolInfo {
 		return nil
 	}
 	cloned := *info
+	return &cloned
+}
+
+// redactSkillToolInfo 用于日志打印：清空 VariableValue，避免敏感值进入日志
+// 安全约束：VariableValue 不得进入日志（设计文档 5.2 / 6.5）
+func redactSkillToolInfo(info *SkillToolInfo) *SkillToolInfo {
+	if info == nil {
+		return nil
+	}
+	cloned := *info
+	if len(cloned.Variables) > 0 {
+		redacted := make([]SkillVariable, len(cloned.Variables))
+		for i, v := range cloned.Variables {
+			redacted[i] = v
+			redacted[i].VariableValue = "<redacted>"
+		}
+		cloned.Variables = redacted
+	}
 	return &cloned
 }

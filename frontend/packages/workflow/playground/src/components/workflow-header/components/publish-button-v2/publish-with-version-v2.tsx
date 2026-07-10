@@ -21,6 +21,7 @@ import type { PublishWorkflowRequest } from '@coze-arch/idl/workflow_api';
 import { type SetDefaultTestCaseReq } from '@coze-arch/idl/debugger_api';
 import { I18n } from '@coze-arch/i18n';
 import { Form, Button, Popover, type useFormApi } from '@coze-arch/coze-design';
+import { IconWarningInfo } from '@coze-arch/bot-icons';
 import { debuggerApi } from '@coze-arch/bot-api';
 
 import { useGlobalState } from '@/hooks';
@@ -430,6 +431,16 @@ const PublishForm: React.FC<{
           ]}
           initValue={'private'}
         />
+        <div className={css['security-risk-tips']}>
+          <IconWarningInfo className={css['security-risk-tips-icon']} />
+          <div className={css['security-risk-tips-content']}>
+            {I18n.t(
+              'workflow_publish_security_risk_tip',
+              {},
+              '安全风险提示：如果工作流被不当使用，您为skill配置的变量有泄露风险，请慎重评估变量的敏感级别并选择适当的工作流发布范围。',
+            )}
+          </div>
+        </div>
         {renderBtn()}
       </Form>
     </div>

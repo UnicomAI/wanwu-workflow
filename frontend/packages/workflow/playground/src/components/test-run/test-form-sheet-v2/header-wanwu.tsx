@@ -38,7 +38,7 @@ export const TestFormSheetHeaderWanwu = () => {
         }}
       />*/}
       <div className={cls(styles['header-title-v2'])}>
-        {I18n.t('workflow_detail_title_testrun')} {info.name || ''}
+        {info.name || ''} {/*{I18n.t('workflow_detail_title_testrun')}*/}
       </div>
     </div>
   );

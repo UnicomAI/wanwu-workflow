@@ -206,7 +206,7 @@ func (v *VariableAggregator) Invoke(ctx context.Context, input map[string]any) (
 	for group, length := range v.groupLen {
 		for i := 0; i < length; i++ {
 			if value, ok := in[group][i]; ok {
-				if value != nil {
+				if value != nil && !isEmptyString(value) {
 					result[group] = value
 					groupToChoice[group] = i
 					break
@@ -409,7 +409,7 @@ func (v *VariableAggregator) Transform(ctx context.Context, input *schema.Stream
 
 					// now the item is always a non-stream element
 					item := items[i]
-					if item == nil {
+					if item == nil || isEmptyString(item) {
 						groupToItems[group][i] = null{}
 					} else {
 						groupToItems[group][i] = item
@@ -507,6 +507,18 @@ func (v *VariableAggregator) Transform(ctx context.Context, input *schema.Stream
 	}
 
 	return actualStream, nil
+}
+
+// isEmptyString reports whether value is an empty string that should be
+// skipped by the FirstNotNullValue merge strategy. The frontend Input
+// component yields "" (not nil) when a string field is cleared, whereas
+// other input components (InputNumber, JsonEditor, etc.) yield
+// null/undefined and the key is omitted entirely.
+func isEmptyString(value any) bool {
+	if s, ok := value.(string); ok {
+		return s == ""
+	}
+	return false
 }
 
 func inputConverter(in map[string]any) (converted map[string]map[int]any, err error) {

@@ -43,13 +43,14 @@ export function WorkflowPage(): React.ReactNode {
     nodeId,
     executeId,
     subExecuteId,
+    readonly: readonlyParam,
   } = usePageParams();
 
   const [initOnce, setInitOnce] = useState(false);
   const { navigateBack } = useNavigateBack();
 
-  /** Whether it is read-only mode, derived from the process exploration module */
-  const readonly = from === 'explore';
+  /** Read-only mode: from process exploration, or forced via the readonly query param */
+  const readonly = from === 'explore' || readonlyParam;
 
   if (!workflowId || !spaceId) {
     return null;

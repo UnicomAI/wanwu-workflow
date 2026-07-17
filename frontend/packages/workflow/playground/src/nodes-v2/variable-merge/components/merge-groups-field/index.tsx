@@ -45,7 +45,7 @@ export const MergeGroupsField: FC<Props> = ({ readonly }) => (
       <div>
         {mergeGroupsField.map((mergeGroupField, groupIndex) => (
           <div
-            key={mergeGroupField.name}
+            key={mergeGroupField.key}
             className="border border-solid border-[var(--coz-stroke-plus)] rounded-[8px] p-2 mb-3 coz-bg-max"
           >
             <Field name={`${mergeGroupField.name}.name`}>

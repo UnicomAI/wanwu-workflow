@@ -927,6 +927,14 @@ func (r *RepositoryImpl) MGetDrafts(ctx context.Context, policy *vo.MGetPolicy) 
 		conditions = append(conditions, r.query.WorkflowMeta.SpaceID.Eq(*q.SpaceID))
 	}
 
+	if len(q.SpaceIDs) > 0 {
+		conditions = append(conditions, r.query.WorkflowMeta.SpaceID.In(q.SpaceIDs...))
+	}
+
+	if len(q.CreatorIDs) > 0 {
+		conditions = append(conditions, r.query.WorkflowMeta.CreatorID.In(q.CreatorIDs...))
+	}
+
 	if q.PublishStatus != nil {
 		if *q.PublishStatus == vo.HasPublished {
 			conditions = append(conditions, r.query.WorkflowMeta.Status.Eq(1))
@@ -1095,6 +1103,14 @@ func (r *RepositoryImpl) MGetLatestVersion(ctx context.Context, policy *vo.MGetP
 
 	if q.SpaceID != nil {
 		conditions = append(conditions, r.query.WorkflowMeta.SpaceID.Eq(*q.SpaceID))
+	}
+
+	if len(q.SpaceIDs) > 0 {
+		conditions = append(conditions, r.query.WorkflowMeta.SpaceID.In(q.SpaceIDs...))
+	}
+
+	if len(q.CreatorIDs) > 0 {
+		conditions = append(conditions, r.query.WorkflowMeta.CreatorID.In(q.CreatorIDs...))
 	}
 
 	if q.PublishStatus != nil {
@@ -1323,6 +1339,14 @@ func (r *RepositoryImpl) MGetMetas(ctx context.Context, query *vo.MetaQuery) (
 
 	if query.SpaceID != nil {
 		conditions = append(conditions, r.query.WorkflowMeta.SpaceID.Eq(*query.SpaceID))
+	}
+
+	if len(query.SpaceIDs) > 0 {
+		conditions = append(conditions, r.query.WorkflowMeta.SpaceID.In(query.SpaceIDs...))
+	}
+
+	if len(query.CreatorIDs) > 0 {
+		conditions = append(conditions, r.query.WorkflowMeta.CreatorID.In(query.CreatorIDs...))
 	}
 
 	if query.PublishStatus != nil {

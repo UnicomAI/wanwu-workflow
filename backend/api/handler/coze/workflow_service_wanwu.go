@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -15,6 +16,60 @@ import (
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/entity/vo"
 	"github.com/coze-dev/coze-studio/backend/pkg/sonic"
 )
+
+// parseInt64Slice 将 []string 转为 []int64
+func parseInt64Slice(ss []string) ([]int64, error) {
+	result := make([]int64, 0, len(ss))
+	for _, s := range ss {
+		v, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, v)
+	}
+	return result, nil
+}
+
+// parseWorkflowListOptFromBody 从请求 JSON body 中解析 ListWorkflowByWanwuOpt 的额外参数
+func parseWorkflowListOptFromBody(c *app.RequestContext) *appworkflow.ListWorkflowByWanwuOpt {
+	rawData, err := c.Body()
+	if err != nil || len(rawData) == 0 {
+		return nil
+	}
+	var bodyMap map[string]interface{}
+	if err := sonic.Unmarshal(rawData, &bodyMap); err != nil {
+		return nil
+	}
+
+	opt := &appworkflow.ListWorkflowByWanwuOpt{}
+
+	if rawSpaceIDs, ok := bodyMap["space_ids"]; ok {
+		switch v := rawSpaceIDs.(type) {
+		case []interface{}:
+			strs := make([]string, len(v))
+			for i, item := range v {
+				strs[i] = fmt.Sprint(item)
+			}
+			opt.SpaceIDs, _ = parseInt64Slice(strs)
+		}
+	}
+
+	if rawCreatorIDs, ok := bodyMap["creator_ids"]; ok {
+		switch v := rawCreatorIDs.(type) {
+		case []interface{}:
+			strs := make([]string, len(v))
+			for i, item := range v {
+				strs[i] = fmt.Sprint(item)
+			}
+			opt.CreatorIDs, _ = parseInt64Slice(strs)
+		}
+	}
+
+	if len(opt.SpaceIDs) == 0 && len(opt.CreatorIDs) == 0 {
+		return nil
+	}
+	return opt
+}
 
 // CreateWorkflowByWanwu 参考CreateWorkflow
 // @router /api/workflow_api/create [POST]
@@ -113,7 +168,10 @@ func GetWorkFlowListByWanwu(ctx context.Context, c *app.RequestContext) {
 		invalidParamRequestResponse(c, err.Error())
 		return
 	}
-	resp, err := appworkflow.SVC.ListWorkflowByWanwu(ctx, &req)
+
+	// 解析管理员场景的多 space/creator 参数（从 JSON body 中获取额外字段）
+	opt := parseWorkflowListOptFromBody(c)
+	resp, err := appworkflow.SVC.ListWorkflowByWanwu(ctx, &req, opt)
 	if err != nil {
 		internalServerErrorResponse(ctx, c, err)
 		return

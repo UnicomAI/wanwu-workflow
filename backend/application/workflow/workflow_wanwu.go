@@ -290,11 +290,19 @@ func (w *ApplicationService) CopyWorkflowByWanwu(ctx context.Context, req *CopyW
 	}, err
 }
 
+// ListWorkflowByWanwuOpt 为管理员场景提供的额外过滤参数
+type ListWorkflowByWanwuOpt struct {
+	// SpaceIDs 指定多个 space 过滤，非空时覆盖 SpaceID 的单值过滤
+	SpaceIDs []int64
+	// CreatorIDs 指定多个 creator 过滤，与 login_user_create 互斥
+	CreatorIDs []int64
+}
+
 // ListWorkflowByWanwu 参考ListWorkflow
 // 1. size上限 300 -> 99999
 // 2. space_id非必须
 // 3. login_user_create为true时筛选workflow.CreatorID为当前用户
-func (w *ApplicationService) ListWorkflowByWanwu(ctx context.Context, req *workflow.GetWorkFlowListRequest) (
+func (w *ApplicationService) ListWorkflowByWanwu(ctx context.Context, req *workflow.GetWorkFlowListRequest, opt *ListWorkflowByWanwuOpt) (
 	_ *workflow.GetWorkFlowListResponse, err error,
 ) {
 	defer func() {
@@ -318,12 +326,20 @@ func (w *ApplicationService) ListWorkflowByWanwu(ctx context.Context, req *workf
 	}
 
 	userID := ctxutil.MustGetUIDFromCtx(ctx)
-	if req.GetSpaceID() != "" {
+
+	useOptSpaceIDs := opt != nil && len(opt.SpaceIDs) > 0
+	if useOptSpaceIDs {
+		option.SpaceIDs = opt.SpaceIDs
+	} else if req.GetSpaceID() != "" {
 		spaceID := mustParseInt64(req.GetSpaceID())
 		if err := checkUserSpace(ctx, userID, spaceID); err != nil {
 			return nil, err
 		}
 		option.SpaceID = ptr.Of(spaceID)
+	}
+
+	if opt != nil && len(opt.CreatorIDs) > 0 {
+		option.CreatorIDs = opt.CreatorIDs
 	}
 
 	if len(req.GetName()) > 0 {
@@ -484,7 +500,7 @@ func (w *ApplicationService) GetWorkFlowSelectByWanwu(ctx context.Context, req *
 	req.Size = &sizeValue
 	// 该接口用于选择当前用户在万悟平台发布/未发布的工作流，仅查询当前用户创建的 workflow
 	req.LoginUserCreate = ptr.Of(true)
-	resp, err := w.ListWorkflowByWanwu(ctx, req)
+	resp, err := w.ListWorkflowByWanwu(ctx, req, nil)
 	if err != nil {
 		return nil, err
 	}

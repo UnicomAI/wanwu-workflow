@@ -74,6 +74,7 @@ type MetaUpdate struct {
 type MetaQuery struct {
 	IDs             []int64
 	SpaceID         *int64
+	SpaceIDs        []int64
 	Page            *Page
 	Name            *string
 	PublishStatus   *PublishStatus
@@ -82,4 +83,5 @@ type MetaQuery struct {
 	NeedTotalNumber bool
 	DescByUpdate    bool
 	Mode            *workflow.WorkflowMode
+	CreatorIDs      []int64
 }

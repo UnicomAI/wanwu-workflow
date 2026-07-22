@@ -8,8 +8,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/coze-dev/coze-studio/backend/application/base/ctxutil"
@@ -21,6 +23,7 @@ import (
 	http_client "github.com/coze-dev/coze-studio/backend/pkg/http-client"
 	"github.com/coze-dev/coze-studio/backend/pkg/logs"
 	"github.com/coze-dev/coze-studio/backend/pkg/sonic"
+	"github.com/coze-dev/coze-studio/backend/types/consts"
 	"github.com/spf13/cast"
 )
 
@@ -276,6 +279,45 @@ type ChunkSearchList struct {
 	MetaData interface{} `json:"meta_data"`
 }
 
+// wanwuMinioDownloadPathSeg 对外暴露的minio下载路径片段
+const wanwuMinioDownloadPathSeg = "/minio/download/api/"
+
+// convertWanwuMinioURL 将minio下载地址还原为内网地址（rag服务无法解析前者），不含该路径片段的地址原样返回
+func convertWanwuMinioURL(ctx context.Context, rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		logs.CtxWarnf(ctx, "[convertWanwuMinioURL] url parse failed, url: %s, err: %v", rawURL, err)
+		return rawURL
+	}
+	// 用EscapedPath而非Path，保留object名中的转义字符
+	escapedPath := u.EscapedPath()
+	idx := strings.Index(escapedPath, wanwuMinioDownloadPathSeg)
+	if idx < 0 {
+		return rawURL
+	}
+	objectPath := strings.TrimLeft(escapedPath[idx+len(wanwuMinioDownloadPathSeg):], "/")
+	if objectPath == "" {
+		return rawURL
+	}
+	apiHost := os.Getenv(consts.MinIOAPIHost)
+	if apiHost == "" {
+		logs.CtxWarnf(ctx, "[convertWanwuMinioURL] %s is empty, keep origin url: %s", consts.MinIOAPIHost, rawURL)
+		return rawURL
+	}
+	if !strings.Contains(apiHost, "://") { // 兼容只配了host:port的情况
+		apiHost = "http://" + apiHost
+	}
+	convertedURL := strings.TrimSuffix(apiHost, "/") + "/" + objectPath
+	if u.RawQuery != "" {
+		convertedURL += "?" + u.RawQuery
+	}
+	if u.Fragment != "" {
+		convertedURL += "#" + u.EscapedFragment()
+	}
+	logs.CtxDebugf(ctx, "[convertWanwuMinioURL] %s => %s", rawURL, convertedURL)
+	return convertedURL
+}
+
 func (kr *WanWuRetrieve) Invoke(ctx context.Context, input map[string]any) (map[string]any, error) {
 	query, _ := input["Query"].(string)
 	image, _ := input["Image"].(string)
@@ -309,7 +351,7 @@ func (kr *WanWuRetrieve) Invoke(ctx context.Context, input map[string]any) (map[
 	var attachmentList []*AttachmentInfo
 	if image != "" {
 		attachmentList = []*AttachmentInfo{
-			{FileType: "image", FileUrl: image},
+			{FileType: "image", FileUrl: convertWanwuMinioURL(ctx, image)},
 		}
 	}
 	req := &HitParams{

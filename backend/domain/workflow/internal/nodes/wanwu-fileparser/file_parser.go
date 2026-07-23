@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/coze-dev/coze-studio/backend/domain/workflow/entity"
@@ -19,26 +18,6 @@ import (
 	http_client "github.com/coze-dev/coze-studio/backend/pkg/http-client"
 	"github.com/coze-dev/coze-studio/backend/pkg/sonic"
 )
-
-const (
-	segmentSize = 500
-	overlapSize = 0.0
-)
-
-var parserChoices = []string{"text"}
-
-var separators = []string{
-	"\n\n",
-	"\n",
-	" ",
-	",",
-	"\u200b", // 零宽空格
-	"\uff0c", // 全角逗号
-	"\u3001", // 顿号
-	"\uff0e", // 全角句号
-	"\u3002", // 句号
-	".",
-	""}
 
 type WanWuRetrieveConfig struct {
 }
@@ -69,25 +48,17 @@ func (r *WanWuRetrieveConfig) Build(_ context.Context, _ *schema.NodeSchema, _ .
 type WanWuRetrieve struct {
 }
 
-type FileParserParams struct {
-	FileUrl       string   `json:"url"`
-	ParserChoices []string `json:"parser_choices"`
-	Overlap       float32  `json:"overlap_size" `
-	SegmentSize   int      `json:"sentence_size"`
-	Separators    []string `json:"separators"`
+// FileParserReq 对应 callback /v1/doc_parse 接口的请求体
+type FileParserReq struct {
+	FileUrl   string `json:"upload_file_url"`
+	MaxToken  int    `json:"max_token"`
 }
 
+// FileParserResp 对应 callback /v1/doc_parse 接口的响应体
 type FileParserResp struct {
-	Docs []*FileParserInfo `json:"docs"`
-}
-
-type FileParserInfo struct {
-	Metadata *FileParserMeta `json:"metadata"`
-	Text     string          `json:"text"`
-}
-
-type FileParserMeta struct {
-	FileName string `json:"file_name"`
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data string `json:"data"`
 }
 
 func (kr *WanWuRetrieve) Invoke(ctx context.Context, input map[string]any) (map[string]any, error) {
@@ -108,30 +79,21 @@ func (kr *WanWuRetrieve) Invoke(ctx context.Context, input map[string]any) (map[
 }
 
 func CommonFileParser(ctx context.Context, fileUrl string) (string, error) {
-	req := &FileParserParams{
-		FileUrl:       fileUrl,
-		ParserChoices: parserChoices,
-		Overlap:       overlapSize,
-		SegmentSize:   segmentSize,
-		Separators:    separators,
+	req := &FileParserReq{
+		FileUrl:  fileUrl,
+		MaxToken: 0, // 0 表示不截断，返回全文
 	}
 
-	response, err := fileParser(ctx, req)
+	resp, err := fileParser(ctx, req)
 	if err != nil {
 		return "", err
 	}
-
-	//循环拼接结果
-	var resultText strings.Builder
-	for _, resp := range response {
-		resultText.WriteString(resp.Text)
-	}
-	return resultText.String(), nil
+	return resp.Data, nil
 }
 
-// fileParser 文档解析
-func fileParser(ctx context.Context, fileParserParams *FileParserParams) ([]*FileParserInfo, error) {
-	paramsByte, err := sonic.Marshal(fileParserParams)
+// fileParser 文档解析，调用 callback 的 /v1/doc_parse 接口
+func fileParser(ctx context.Context, req *FileParserReq) (*FileParserResp, error) {
+	paramsByte, err := sonic.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
@@ -147,11 +109,13 @@ func fileParser(ctx context.Context, fileParserParams *FileParserParams) ([]*Fil
 	}
 	var resp FileParserResp
 	if err := sonic.Unmarshal(result, &resp); err != nil {
-		//log.Errorf(err.Error())
 		return nil, err
 	}
-	if len(resp.Docs) == 0 {
-		return nil, errors.New("file_parser error")
+	if resp.Code != 0 {
+		return nil, errors.New("file_parser error: " + resp.Msg)
 	}
-	return resp.Docs, nil
+	if resp.Data == "" {
+		return nil, errors.New("file_parser error: empty content")
+	}
+	return &resp, nil
 }

@@ -40,6 +40,8 @@ interface SearchParams {
   execute_id?: string;
   /** subprocess execution id */
   sub_execute_id?: string;
+  /** Force read-only mode on enter, e.g. when embedded as a preview iframe */
+  readonly?: string;
 }
 
 export function usePageParams() {
@@ -66,6 +68,7 @@ export function usePageParams() {
     node_id: nodeId,
     execute_id: executeId,
     sub_execute_id: subExecuteId,
+    readonly: readonlyParam,
   } = searchParams;
 
   const optType = opt_type
@@ -102,6 +105,8 @@ export function usePageParams() {
     }
   });
 
+  const readonly = readonlyParam === 'true';
+
   return {
     spaceId,
     workflowId,
@@ -112,5 +117,6 @@ export function usePageParams() {
     nodeId,
     executeId,
     subExecuteId,
+    readonly,
   };
 }

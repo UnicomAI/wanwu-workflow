@@ -18,6 +18,7 @@ package nodes
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -253,6 +254,8 @@ func convertToString(_ context.Context, in any, path string, options *convertOpt
 		return strconv.FormatFloat(in.(float64), 'f', -1, 64), nil, nil
 	case bool:
 		return strconv.FormatBool(in.(bool)), nil, nil
+	case json.Number:
+		return in.(json.Number).String(), nil, nil
 	case []any, map[string]any:
 		s, err := sonic.MarshalString(in)
 		if err != nil {
@@ -285,6 +288,15 @@ func convertToInt64(_ context.Context, in any, path string, options *convertOpti
 			return nil, newWarnings(path, vo.DataTypeInteger, err), nil
 		}
 		return i, nil, nil
+	case json.Number:
+		i, err := in.(json.Number).Int64()
+		if err != nil {
+			if options.failFast {
+				return nil, nil, vo.WrapError(errno.ErrInvalidParameter, err)
+			}
+			return nil, newWarnings(path, vo.DataTypeInteger, err), nil
+		}
+		return i, nil, nil
 	default:
 		if options.failFast {
 			return nil, nil, vo.WrapError(errno.ErrInvalidParameter, fmt.Errorf("unsupported type to convert to int64: %T", in))
@@ -301,6 +313,15 @@ func convertToFloat64(_ context.Context, in any, path string, options *convertOp
 		return in.(float64), nil, nil
 	case string:
 		f, err := strconv.ParseFloat(in.(string), 64)
+		if err != nil {
+			if options.failFast {
+				return nil, nil, vo.WrapError(errno.ErrInvalidParameter, err)
+			}
+			return nil, newWarnings(path, vo.DataTypeNumber, err), nil
+		}
+		return f, nil, nil
+	case json.Number:
+		f, err := in.(json.Number).Float64()
 		if err != nil {
 			if options.failFast {
 				return nil, nil, vo.WrapError(errno.ErrInvalidParameter, err)

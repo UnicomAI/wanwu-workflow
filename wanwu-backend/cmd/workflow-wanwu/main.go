@@ -24,6 +24,7 @@ import (
 	wanwu_http "github.com/UnicomAI/wanwu-workflow/wanwu-backend/internal/server/http"
 	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/internal/service/workflow"
 	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/pkg/redis"
+	"github.com/UnicomAI/wanwu-workflow/wanwu-backend/pkg/statistictrace"
 )
 
 var (
@@ -74,11 +75,16 @@ func main() {
 		log.Fatalf("init db err: %v", err)
 	}
 
-	// redis
+	// redis (workflow 业务缓存，db=1)
 	if err := redis.InitWorkflow(ctx, config.Cfg().Redis); err != nil {
 		log.Fatalf("init redis err: %v", err)
 	}
 	redisCli := coze_cache_impl.NewWithRedisCli(redis.Workflow())
+
+	// redis OP（与 BFF trace_user 共用 db=7，供模型统计 TraceInfo 写入）
+	if err := statistictrace.InitOP(ctx, toStatisticRedisConfig(config.Cfg().Redis)); err != nil {
+		log.Fatalf("init statistic trace redis OP err: %v", err)
+	}
 
 	// minio
 	minioCli, err := coze_minio.New(ctx, config.Cfg().Minio.Endpoint, config.Cfg().Minio.User, config.Cfg().Minio.Password, config.WorkflowBucket, false)
@@ -169,6 +175,17 @@ func getEnv(key string, defaultValue string) string {
 		return defaultValue
 	}
 	return v
+}
+
+func toStatisticRedisConfig(cfg redis.Config) statistictrace.RedisConfig {
+	return statistictrace.RedisConfig{
+		Host:       cfg.Host,
+		Port:       cfg.Port,
+		Username:   cfg.Username,
+		Password:   cfg.Password,
+		Standalone: cfg.Standalone,
+		MasterName: cfg.MasterName,
+	}
 }
 
 func versionPrint() {

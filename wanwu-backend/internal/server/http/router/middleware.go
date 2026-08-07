@@ -1,6 +1,8 @@
 package router
 
-import "github.com/cloudwego/hertz/pkg/app"
+import (
+	"github.com/cloudwego/hertz/pkg/app"
+)
 
 func rootMw() []app.HandlerFunc {
 	// your code...
@@ -276,7 +278,7 @@ func _getllmnodefcsettingsmergedMw() []app.HandlerFunc {
 }
 
 func _workflownodedebugv2Mw() []app.HandlerFunc {
-	// your code...
+	// trace 统计由全局 TraceStatisticGlobal 处理，见 internal/server/http/init.go
 	return nil
 }
 
@@ -316,12 +318,12 @@ func _signimageurlMw() []app.HandlerFunc {
 }
 
 func _workflowtestresumeMw() []app.HandlerFunc {
-	// your code...
+	// trace 统计由全局 TraceStatisticGlobal 处理，见 internal/server/http/init.go
 	return nil
 }
 
 func _workflowtestrunMw() []app.HandlerFunc {
-	// your code...
+	// trace 统计由全局 TraceStatisticGlobal 处理，见 internal/server/http/init.go
 	return nil
 }
 
@@ -446,6 +448,7 @@ func _workflowsMw() []app.HandlerFunc {
 }
 
 func _openapichatflowrunMw() []app.HandlerFunc {
+	// trace 统计由全局 TraceStatisticGlobal 处理，见 internal/server/http/init.go
 	return nil
 }
 

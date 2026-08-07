@@ -20,6 +20,7 @@ require (
 	github.com/hertz-contrib/cors v0.1.0
 	github.com/hertz-contrib/obs-opentelemetry/tracing v0.4.1
 	github.com/redis/go-redis/v9 v9.8.0
+	google.golang.org/protobuf v1.36.6
 	gorm.io/gorm v1.30.0
 )
 
@@ -203,7 +204,6 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20250303144028-a0af3efb3deb // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250311190419-81fb87f6b8bf // indirect
 	google.golang.org/grpc v1.71.0 // indirect
-	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

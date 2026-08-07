@@ -20,11 +20,13 @@ package coze
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/cloudwego/eino/schema"
 	"github.com/cloudwego/hertz/pkg/app"
@@ -392,6 +394,30 @@ func WorkFlowTestRun(ctx context.Context, c *app.RequestContext) {
 	}
 
 	resp, err := appworkflow.SVC.TestRun(ctx, &req)
+	// 仅草稿试运行直连本接口；广场/OpenAPI 走 BFF→run_by_wanwu，不会进这里。
+	// 提交失败立刻记；成功则后台等到跑完，自己掐 time.Since 记 nonStreamCosts（保留原 TraceID）。
+	userId, orgId := resolveWorkflowDraftRecordUser(ctx, c, req.GetSpaceID())
+	appType := resolveWorkflowDraftAppType(ctx, req.GetWorkflowID())
+	if userId != "" && orgId != "" && req.GetWorkflowID() != "" {
+		// 应用统计 requestBody 落整体 HTTP 请求；question 取试运行入参。
+		reqBody := ""
+		if b, e := json.Marshal(&req); e == nil {
+			reqBody = string(b)
+		}
+		question := ""
+		if b, e := json.Marshal(req.Input); e == nil {
+			question = string(b)
+		}
+		if err != nil {
+			callWanwuRecordAppAPI(ctx, userId, orgId, req.GetWorkflowID(), appType, false, false, 0, reqBody, "", question, "", err.Error())
+		} else if resp != nil && resp.Data != nil && resp.Data.GetExecuteID() != "" {
+			recordDraftTestRunAfterFinish(ctx, userId, orgId, req.GetWorkflowID(),
+				resp.Data.GetExecuteID(), appType, reqBody, question, time.Now())
+		}
+	} else {
+		logs.CtxWarnf(ctx, "WorkFlowTestRun skip app record: empty userId/orgId/workflowId userId=%q orgId=%q workflowId=%q",
+			userId, orgId, req.GetWorkflowID())
+	}
 	if err != nil {
 		internalServerErrorResponse(ctx, c, err)
 		return

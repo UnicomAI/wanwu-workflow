@@ -49,7 +49,8 @@ func Init() {
 	s.Use(middleware.JwtUser)                       // must after I18n
 	s.Use(middleware.SetUserID)                     // set userID
 	s.Use(middleware.SetOrgID)                      // set orgID
-	s.Use(hertztracing.ServerMiddleware(tracerCfg)) // trace
+	s.Use(hertztracing.ServerMiddleware(tracerCfg)) //trace
+	s.Use(middleware.TraceStatisticGlobal())        // 须在 tracing 之后，匹配试运行/chatflow 路径
 
 	router.Register(s)
 	s.Spin()

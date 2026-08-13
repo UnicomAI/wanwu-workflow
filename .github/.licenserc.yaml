@@ -28,5 +28,10 @@ header:
     - '**/mock/**'
     - 'wanwu-backend/**'
     - 'scripts/**'
+    - '**/*_wanwu.go'
+    - '**/wanwu-*/**'
+    - 'backend/pkg/http-client/**'
+    - 'backend/pkg/trace-util/**'
+    - 'backend/infra/embedding/impl/wrap/ollama.go'
   files:
     - ../backend/go.mod

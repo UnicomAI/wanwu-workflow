@@ -1716,21 +1716,6 @@ func (mr *MockRepositoryMockRecorder) GetVersionListByConnectorAndWorkflowID(ctx
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVersionListByConnectorAndWorkflowID", reflect.TypeOf((*MockRepository)(nil).GetVersionListByConnectorAndWorkflowID), ctx, connectorID, workflowID, limit)
 }
 
-// GetVersionListByWanwu mocks base method.
-func (m *MockRepository) GetVersionListByWanwu(ctx context.Context, id int64) ([]*vo.VersionInfo, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetVersionListByWanwu", ctx, id)
-	ret0, _ := ret[0].([]*vo.VersionInfo)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetVersionListByWanwu indicates an expected call of GetVersionListByWanwu.
-func (mr *MockRepositoryMockRecorder) GetVersionListByWanwu(ctx, id any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVersionListByWanwu", reflect.TypeOf((*MockRepository)(nil).GetVersionListByWanwu), ctx, id)
-}
-
 // GetWorkflowCancelFlag mocks base method.
 func (m *MockRepository) GetWorkflowCancelFlag(ctx context.Context, wfExeID int64) (bool, error) {
 	m.ctrl.T.Helper()
@@ -1882,21 +1867,6 @@ func (m *MockRepository) MGetMetas(ctx context.Context, query *vo.MetaQuery) (ma
 func (mr *MockRepositoryMockRecorder) MGetMetas(ctx, query any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MGetMetas", reflect.TypeOf((*MockRepository)(nil).MGetMetas), ctx, query)
-}
-
-// MGetWorkflowLatestVersionByWanwu mocks base method.
-func (m *MockRepository) MGetWorkflowLatestVersionByWanwu(ctx context.Context, workflowIDs []int64) (map[int64]*vo.VersionInfo, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MGetWorkflowLatestVersionByWanwu", ctx, workflowIDs)
-	ret0, _ := ret[0].(map[int64]*vo.VersionInfo)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// MGetWorkflowLatestVersionByWanwu indicates an expected call of MGetWorkflowLatestVersionByWanwu.
-func (mr *MockRepositoryMockRecorder) MGetWorkflowLatestVersionByWanwu(ctx, workflowIDs any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MGetWorkflowLatestVersionByWanwu", reflect.TypeOf((*MockRepository)(nil).MGetWorkflowLatestVersionByWanwu), ctx, workflowIDs)
 }
 
 // MGetReferences mocks base method.
@@ -2128,20 +2098,6 @@ func (m *MockRepository) UpdateMeta(ctx context.Context, id int64, metaUpdate *v
 func (mr *MockRepositoryMockRecorder) UpdateMeta(ctx, id, metaUpdate any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMeta", reflect.TypeOf((*MockRepository)(nil).UpdateMeta), ctx, id, metaUpdate)
-}
-
-// UpdateWorkflowVersionDescriptionByWanwu mocks base method.
-func (m *MockRepository) UpdateWorkflowVersionDescriptionByWanwu(ctx context.Context, workflowID int64, description string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateWorkflowVersionDescriptionByWanwu", ctx, workflowID, description)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateWorkflowVersionDescriptionByWanwu indicates an expected call of UpdateWorkflowVersionDescriptionByWanwu.
-func (mr *MockRepositoryMockRecorder) UpdateWorkflowVersionDescriptionByWanwu(ctx, workflowID, description any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateWorkflowVersionDescriptionByWanwu", reflect.TypeOf((*MockRepository)(nil).UpdateWorkflowVersionDescriptionByWanwu), ctx, workflowID, description)
 }
 
 // UpdateNodeExecution mocks base method.

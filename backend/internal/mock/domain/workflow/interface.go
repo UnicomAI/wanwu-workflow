@@ -138,6 +138,21 @@ func (mr *MockServiceMockRecorder) Cancel(ctx, wfExeID, wfID, spaceID any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockService)(nil).Cancel), ctx, wfExeID, wfID, spaceID)
 }
 
+// CheckNameDuplicateInSpace mocks base method.
+func (m *MockService) CheckNameDuplicateInSpace(ctx context.Context, spaceID int64, name string, excludeID int64) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckNameDuplicateInSpace", ctx, spaceID, name, excludeID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckNameDuplicateInSpace indicates an expected call of CheckNameDuplicateInSpace.
+func (mr *MockServiceMockRecorder) CheckNameDuplicateInSpace(ctx, spaceID, name, excludeID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckNameDuplicateInSpace", reflect.TypeOf((*MockService)(nil).CheckNameDuplicateInSpace), ctx, spaceID, name, excludeID)
+}
+
 // CheckWorkflowsToReplace mocks base method.
 func (m *MockService) CheckWorkflowsToReplace(ctx context.Context, appID, templateID int64) ([]*entity.Workflow, error) {
 	m.ctrl.T.Helper()
@@ -522,6 +537,21 @@ func (mr *MockServiceMockRecorder) GetWorkflowVersionsByConnector(ctx, connector
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkflowVersionsByConnector", reflect.TypeOf((*MockService)(nil).GetWorkflowVersionsByConnector), ctx, connectorID, workflowID, limit)
 }
 
+// GetWorkflowVersionListByWanwu mocks base method.
+func (m *MockService) GetWorkflowVersionListByWanwu(ctx context.Context, workflowID int64) ([]*vo.VersionInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetWorkflowVersionListByWanwu", ctx, workflowID)
+	ret0, _ := ret[0].([]*vo.VersionInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetWorkflowVersionListByWanwu indicates an expected call of GetWorkflowVersionListByWanwu.
+func (mr *MockServiceMockRecorder) GetWorkflowVersionListByWanwu(ctx, workflowID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkflowVersionListByWanwu", reflect.TypeOf((*MockService)(nil).GetWorkflowVersionListByWanwu), ctx, workflowID)
+}
+
 // InitApplicationDefaultConversationTemplate mocks base method.
 func (m *MockService) InitApplicationDefaultConversationTemplate(ctx context.Context, spaceID, appID, userID int64) error {
 	m.ctrl.T.Helper()
@@ -596,6 +626,21 @@ func (m *MockService) MGet(ctx context.Context, policy *vo.MGetPolicy) ([]*entit
 func (mr *MockServiceMockRecorder) MGet(ctx, policy any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MGet", reflect.TypeOf((*MockService)(nil).MGet), ctx, policy)
+}
+
+// MGetWorkflowLatestVersionByWanwu mocks base method.
+func (m *MockService) MGetWorkflowLatestVersionByWanwu(ctx context.Context, workflowIDs []int64) (map[int64]*vo.VersionInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MGetWorkflowLatestVersionByWanwu", ctx, workflowIDs)
+	ret0, _ := ret[0].(map[int64]*vo.VersionInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MGetWorkflowLatestVersionByWanwu indicates an expected call of MGetWorkflowLatestVersionByWanwu.
+func (mr *MockServiceMockRecorder) MGetWorkflowLatestVersionByWanwu(ctx, workflowIDs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MGetWorkflowLatestVersionByWanwu", reflect.TypeOf((*MockService)(nil).MGetWorkflowLatestVersionByWanwu), ctx, workflowIDs)
 }
 
 // MGetStaticConversation mocks base method.
@@ -817,6 +862,20 @@ func (mr *MockServiceMockRecorder) UpdateDraftConversationTemplateName(ctx, appI
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDraftConversationTemplateName", reflect.TypeOf((*MockService)(nil).UpdateDraftConversationTemplateName), ctx, appID, userID, templateID, name)
 }
 
+// UpdateWorkflowVersionDescriptionByWanwu mocks base method.
+func (m *MockService) UpdateWorkflowVersionDescriptionByWanwu(ctx context.Context, workflowID int64, description string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateWorkflowVersionDescriptionByWanwu", ctx, workflowID, description)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateWorkflowVersionDescriptionByWanwu indicates an expected call of UpdateWorkflowVersionDescriptionByWanwu.
+func (mr *MockServiceMockRecorder) UpdateWorkflowVersionDescriptionByWanwu(ctx, workflowID, description any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateWorkflowVersionDescriptionByWanwu", reflect.TypeOf((*MockService)(nil).UpdateWorkflowVersionDescriptionByWanwu), ctx, workflowID, description)
+}
+
 // UpdateMeta mocks base method.
 func (m *MockService) UpdateMeta(ctx context.Context, id int64, metaUpdate *vo.MetaUpdate) error {
 	m.ctrl.T.Helper()
@@ -998,6 +1057,21 @@ func (m *MockRepository) CancelAllRunningNodes(ctx context.Context, wfExeID int6
 func (mr *MockRepositoryMockRecorder) CancelAllRunningNodes(ctx, wfExeID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelAllRunningNodes", reflect.TypeOf((*MockRepository)(nil).CancelAllRunningNodes), ctx, wfExeID)
+}
+
+// CheckNameDuplicateInSpace mocks base method.
+func (m *MockRepository) CheckNameDuplicateInSpace(ctx context.Context, spaceID int64, name string, excludeID int64) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckNameDuplicateInSpace", ctx, spaceID, name, excludeID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckNameDuplicateInSpace indicates an expected call of CheckNameDuplicateInSpace.
+func (mr *MockRepositoryMockRecorder) CheckNameDuplicateInSpace(ctx, spaceID, name, excludeID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckNameDuplicateInSpace", reflect.TypeOf((*MockRepository)(nil).CheckNameDuplicateInSpace), ctx, spaceID, name, excludeID)
 }
 
 // CopyTemplateConversationByAppID mocks base method.
@@ -1642,6 +1716,21 @@ func (mr *MockRepositoryMockRecorder) GetVersionListByConnectorAndWorkflowID(ctx
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVersionListByConnectorAndWorkflowID", reflect.TypeOf((*MockRepository)(nil).GetVersionListByConnectorAndWorkflowID), ctx, connectorID, workflowID, limit)
 }
 
+// GetVersionListByWanwu mocks base method.
+func (m *MockRepository) GetVersionListByWanwu(ctx context.Context, id int64) ([]*vo.VersionInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetVersionListByWanwu", ctx, id)
+	ret0, _ := ret[0].([]*vo.VersionInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetVersionListByWanwu indicates an expected call of GetVersionListByWanwu.
+func (mr *MockRepositoryMockRecorder) GetVersionListByWanwu(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVersionListByWanwu", reflect.TypeOf((*MockRepository)(nil).GetVersionListByWanwu), ctx, id)
+}
+
 // GetWorkflowCancelFlag mocks base method.
 func (m *MockRepository) GetWorkflowCancelFlag(ctx context.Context, wfExeID int64) (bool, error) {
 	m.ctrl.T.Helper()
@@ -1793,6 +1882,21 @@ func (m *MockRepository) MGetMetas(ctx context.Context, query *vo.MetaQuery) (ma
 func (mr *MockRepositoryMockRecorder) MGetMetas(ctx, query any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MGetMetas", reflect.TypeOf((*MockRepository)(nil).MGetMetas), ctx, query)
+}
+
+// MGetWorkflowLatestVersionByWanwu mocks base method.
+func (m *MockRepository) MGetWorkflowLatestVersionByWanwu(ctx context.Context, workflowIDs []int64) (map[int64]*vo.VersionInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MGetWorkflowLatestVersionByWanwu", ctx, workflowIDs)
+	ret0, _ := ret[0].(map[int64]*vo.VersionInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MGetWorkflowLatestVersionByWanwu indicates an expected call of MGetWorkflowLatestVersionByWanwu.
+func (mr *MockRepositoryMockRecorder) MGetWorkflowLatestVersionByWanwu(ctx, workflowIDs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MGetWorkflowLatestVersionByWanwu", reflect.TypeOf((*MockRepository)(nil).MGetWorkflowLatestVersionByWanwu), ctx, workflowIDs)
 }
 
 // MGetReferences mocks base method.
@@ -2024,6 +2128,20 @@ func (m *MockRepository) UpdateMeta(ctx context.Context, id int64, metaUpdate *v
 func (mr *MockRepositoryMockRecorder) UpdateMeta(ctx, id, metaUpdate any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMeta", reflect.TypeOf((*MockRepository)(nil).UpdateMeta), ctx, id, metaUpdate)
+}
+
+// UpdateWorkflowVersionDescriptionByWanwu mocks base method.
+func (m *MockRepository) UpdateWorkflowVersionDescriptionByWanwu(ctx context.Context, workflowID int64, description string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateWorkflowVersionDescriptionByWanwu", ctx, workflowID, description)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateWorkflowVersionDescriptionByWanwu indicates an expected call of UpdateWorkflowVersionDescriptionByWanwu.
+func (mr *MockRepositoryMockRecorder) UpdateWorkflowVersionDescriptionByWanwu(ctx, workflowID, description any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateWorkflowVersionDescriptionByWanwu", reflect.TypeOf((*MockRepository)(nil).UpdateWorkflowVersionDescriptionByWanwu), ctx, workflowID, description)
 }
 
 // UpdateNodeExecution mocks base method.

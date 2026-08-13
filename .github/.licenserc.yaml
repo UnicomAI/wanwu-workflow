@@ -26,5 +26,7 @@ header:
     - '**/*_mock.go'
     - 'backend/internal/mock/**'
     - '**/mock/**'
+    - 'wanwu-backend/**'
+    - 'scripts/**'
   files:
     - ../backend/go.mod

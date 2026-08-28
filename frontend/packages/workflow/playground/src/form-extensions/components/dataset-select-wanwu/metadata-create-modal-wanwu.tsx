@@ -59,6 +59,8 @@ export const MetadataCreateModal = ({
   useEffect(() => {
     if (metaDataList?.length) {
       setCurrentMetaDataList(metaDataList);
+    } else {
+      setCurrentMetaDataList([]);
     }
   }, [metaDataList]);
 

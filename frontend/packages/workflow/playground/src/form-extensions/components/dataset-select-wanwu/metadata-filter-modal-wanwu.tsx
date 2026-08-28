@@ -51,6 +51,7 @@ const filterLogicTypeList = [
 const TIME = 'time'
 const STRING = 'string'
 const NUMBER = 'number'
+const EMPTY_CONDITIONS = ['is empty', 'is not empty']
 const conditionList = {
   [TIME]: [
     {key: 'is', value: I18n.t('datasets_metadata_true')},
@@ -315,6 +316,9 @@ export const MetadataFilterModal = ({
                                   onChange={(v: any) => {
                                     const metaFilterParams = JSON.parse(JSON.stringify(currentMetaData.metaFilterParams ?? []))
                                     metaFilterParams[index].condition = v
+                                    if (EMPTY_CONDITIONS.includes(v)) {
+                                      setInputMetaDataValue(index, '')
+                                    }
                                     setCurrentMetaData({...currentMetaData, metaFilterParams})
                                   }}
                                 >
@@ -331,9 +335,11 @@ export const MetadataFilterModal = ({
                             title: 'Value',
                             dataIndex: 'value',
                             render: (value: string, item: any, index: number) => {
+                              const isValueDisabled = EMPTY_CONDITIONS.includes(item.condition)
                               return (
                                 item.type === TIME ? (
                                   <DatePicker
+                                    disabled={isValueDisabled}
                                     className="w-full"
                                     type="dateTime"
                                     value={metaDataValueList[index] ? Number(metaDataValueList[index]) : ''}
@@ -348,6 +354,7 @@ export const MetadataFilterModal = ({
                                 ) : (
                                   item.type === NUMBER ? (
                                     <CozInputNumber
+                                      disabled={isValueDisabled}
                                       className="w-full"
                                       value={metaDataValueList[index]}
                                       onChange={v => {
@@ -356,6 +363,7 @@ export const MetadataFilterModal = ({
                                     />
                                   ) : (
                                     <Input
+                                      disabled={isValueDisabled}
                                       className="w-full"
                                       value={metaDataValueList[index]}
                                       onChange={(v) => {
@@ -402,7 +410,12 @@ export const MetadataFilterModal = ({
                       color="brand"
                       onClick={() => {
                         const metaDataFilterParams = formatMetaDataValue()
-                        const hasNullValue = metaDataFilterParams.metaFilterParams?.some(item => !(item.key && item.value))
+                        const hasNullValue = metaDataFilterParams.metaFilterParams?.some(item => {
+                          if (EMPTY_CONDITIONS.includes(item.condition)) {
+                            return !item.key
+                          }
+                          return !(item.key && item.value)
+                        })
                         if (hasNullValue) {
                           Toast.warning({
                             content: I18n.t('datasets_metadata_filter_error'),

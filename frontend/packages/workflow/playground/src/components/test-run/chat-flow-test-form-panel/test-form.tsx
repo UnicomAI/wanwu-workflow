@@ -77,7 +77,8 @@ export const ChatFlowTestForm: React.FC<TestWorkflowFormPanelProps> = ({
 
   const testRunChatFlowV3 = async () => {
     const hasError = await validate();
-    if (hasError) {
+    // 调试页无需校验节点，是已发布的，直接运行即可
+    if (hasError && !isRunPage()) {
       floatLayoutService.open('problemPanel', 'bottom');
       return;
     }

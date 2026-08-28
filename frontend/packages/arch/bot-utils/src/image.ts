@@ -21,3 +21,15 @@ export const loadImage = (url: string): Promise<void> =>
     img.onerror = reject;
     img.src = url;
   });
+
+// avatar.path from backend is a relative path that must be served under /user/api.
+// Pass through absolute URLs unchanged; strip leading slashes so it stays idempotent.
+export const getAvatarUrl = (path?: string): string => {
+  if (!path) {
+    return '';
+  }
+  if (/^https?:\/\//i.test(path) || path.startsWith('/user/api')) {
+    return path;
+  }
+  return `/user/api/${path.replace(/^\/+/, '')}`;
+};

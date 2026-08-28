@@ -16,6 +16,8 @@
 
 import { type FC } from 'react';
 
+import { getAvatarUrl } from '@coze-arch/bot-utils';
+
 import { IconNameDescCard } from '../icon-name-desc-card-wanwu';
 import { type Library } from './types';
 
@@ -50,7 +52,7 @@ export const LibraryCard: FC<LibraryCardProps> = props => {
       name={library?.name}
       nameSuffix={library?.nameExtra}
       description={library?.description}
-      icon={library?.avatar?.path}
+      icon={getAvatarUrl(library?.avatar?.path)}
       onEdit={() => onEdit?.(library.id)}
       onRemove={() => onDelete?.(library.id)}
       showEditBtn={showEditBtn}

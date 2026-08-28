@@ -22,6 +22,7 @@ import { useBoolean } from 'ahooks';
 import { IconSpin } from '@douyinfe/semi-icons';
 import { BotE2e } from '@coze-data/e2e';
 import { I18n } from '@coze-arch/i18n';
+import { getAvatarUrl } from '@coze-arch/bot-utils';
 import { useSpaceStore } from '@coze-arch/bot-studio-store';
 import { type ButtonProps } from '@coze-arch/bot-semi/Button';
 import {
@@ -179,7 +180,7 @@ export const KnowledgeCardListVertical: FC<DatasetCardListVerticalProps> = ({
               {item.avatar?.path && (
                 <Avatar
                   shape="square"
-                  src={item.avatar.path}
+                  src={getAvatarUrl(item.avatar.path)}
                   className={styles.left}
                 />
               )}

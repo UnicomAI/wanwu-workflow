@@ -13929,6 +13929,9 @@ importers:
       '@coze-arch/bot-tea':
         specifier: workspace:*
         version: link:../../../arch/bot-tea
+      '@coze-arch/bot-utils':
+        specifier: workspace:*
+        version: link:../../../arch/bot-utils
       '@coze-arch/coze-design':
         specifier: 0.0.7-alpha.985c0d
         version: 0.0.7-alpha.985c0d(@types/react@18.2.37)(acorn@8.15.0)(react-dom@18.2.0)(react@18.2.0)

@@ -262,7 +262,7 @@ func (w *ApplicationService) OpenAPIRunByWanwu(ctx context.Context, workflowID s
 		Version:  *meta.LatestPublishedVersion,
 		Operator: meta.CreatorID,
 		Mode:     workflowModel.ExecuteModeRelease,
-		// AppID:         appID,
+		AppID:    ptr.Of(meta.ID),
 		// AgentID:       agentID,
 		ConnectorID:   consts.APIConnectorID,
 		ConnectorUID:  strconv.FormatInt(meta.CreatorID, 10),

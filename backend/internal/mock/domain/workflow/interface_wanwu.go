@@ -41,3 +41,18 @@ func (mr *MockRepositoryMockRecorder) UpdateWorkflowVersionDescriptionByWanwu(ct
 		ctx, id, versionDescription,
 	)
 }
+
+// MGetWorkflowLatestVersionByWanwu mocks base method.
+func (m *MockRepository) MGetWorkflowLatestVersionByWanwu(ctx context.Context, workflowIDs []int64) (map[int64]*vo.VersionInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MGetWorkflowLatestVersionByWanwu", ctx, workflowIDs)
+	ret0, _ := ret[0].(map[int64]*vo.VersionInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MGetWorkflowLatestVersionByWanwu indicates an expected call of MGetWorkflowLatestVersionByWanwu.
+func (mr *MockRepositoryMockRecorder) MGetWorkflowLatestVersionByWanwu(ctx, workflowIDs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MGetWorkflowLatestVersionByWanwu", reflect.TypeOf((*MockRepository)(nil).MGetWorkflowLatestVersionByWanwu), ctx, workflowIDs)
+}

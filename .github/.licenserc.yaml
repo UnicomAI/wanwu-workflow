@@ -26,5 +26,14 @@ header:
     - '**/*_mock.go'
     - 'backend/internal/mock/**'
     - '**/mock/**'
+    - 'wanwu-backend/**'
+    - 'scripts/**'
+    - '**/*_wanwu.go'
+    - '**/*wanwu*/**'
+    - '**/*wanwu*'
+    - 'backend/pkg/http-client/**'
+    - 'backend/pkg/trace-util/**'
+    - 'backend/infra/embedding/impl/wrap/ollama.go'
+    - 'frontend/apps/coze-studio/src/workflowRoutes.tsx'
   files:
     - ../backend/go.mod

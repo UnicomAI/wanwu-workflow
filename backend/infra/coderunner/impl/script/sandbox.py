@@ -1,6 +1,8 @@
-import os
+import ctypes
 import dataclasses
 import json
+import os
+import signal
 import subprocess
 import time
 from typing import Dict, Literal
@@ -8,6 +10,8 @@ from typing import Dict, Literal
 Status = Literal["success", "error"]
 
 PKG_NAME = "jsr:@langchain/pyodide-sandbox@0.0.4"
+PR_SET_PDEATHSIG = 1
+
 
 @dataclasses.dataclass(kw_only=True)
 class Output:
@@ -27,6 +31,33 @@ def build_permission_flag(
     if isinstance(value, list) and value:
         return f"{flag}={','.join(value)}"
     return None
+
+
+def _child_preexec() -> None:
+    # Equivalent to start_new_session=True, plus PDEATHSIG so a Go-side
+    # SIGKILL of this Python process also kills Deno (new session / new pgid).
+    os.setsid()
+    try:
+        libc = ctypes.CDLL(None, use_errno=True)
+        libc.prctl(PR_SET_PDEATHSIG, signal.SIGKILL)
+        if os.getppid() == 1:
+            os.kill(os.getpid(), signal.SIGKILL)
+    except Exception:
+        pass
+
+
+def _kill_process_group(proc: subprocess.Popen | None) -> None:
+    if proc is None or proc.poll() is not None:
+        return
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    except OSError:
+        try:
+            proc.kill()
+        except ProcessLookupError:
+            pass
 
 
 class Sandbox:
@@ -113,26 +144,41 @@ class Sandbox:
         start_time = time.time()
         stdout = ""
         result = None
-        stderr: str
-        status: Literal["success", "error"]
+        stderr = ""
+        status: Literal["success", "error"] = "error"
         cmd = self._build_command(
             code,
             session_bytes=session_bytes,
             session_metadata=session_metadata,
             memory_limit_mb=memory_limit_mb,
         )
+        timeout = timeout_seconds if timeout_seconds and timeout_seconds > 0 else None
+        process = None
 
         try:
-            process = subprocess.run(
+            process = subprocess.Popen(
                 cmd,
-                capture_output=True,
-                text=False,
-                timeout=timeout_seconds,
-                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                preexec_fn=_child_preexec,
             )
-
-            stdout_bytes = process.stdout
-            stderr_bytes = process.stderr
+            try:
+                stdout_bytes, stderr_bytes = process.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                _kill_process_group(process)
+                try:
+                    process.communicate(timeout=5)
+                except Exception:
+                    pass
+                status = "error"
+                stderr = f"Execution timed out after {timeout_seconds} seconds"
+                return Output(
+                    status=status,
+                    execution_time=time.time() - start_time,
+                    stdout=None,
+                    stderr=stderr,
+                    result=None,
+                )
 
             stdout = stdout_bytes.decode("utf-8", errors="replace")
 
@@ -145,16 +191,15 @@ class Sandbox:
             else:
                 stderr = stderr_bytes.decode("utf-8", errors="replace")
                 status = "error"
-
-        except subprocess.TimeoutExpired:
-            status = "error"
-            stderr = f"Execution timed out after {timeout_seconds} seconds"
-
-        end_time = time.time()
+        except Exception:
+            _kill_process_group(process)
+            raise
+        finally:
+            _kill_process_group(process)
 
         return Output(
             status=status,
-            execution_time=end_time - start_time,
+            execution_time=time.time() - start_time,
             stdout=stdout or None,
             stderr=stderr or None,
             result=result,
@@ -189,11 +234,14 @@ result
 
 
 if __name__ == "__main__":
-    w = os.fdopen(3, "wb", )
-    r = os.fdopen(4, "rb", )
-
+    w = None
+    r = None
     try:
+        w = os.fdopen(3, "wb")
+        r = os.fdopen(4, "rb")
         req = json.load(r)
+        r.close()
+        r = None
         user_code, params, config = req["code"], req["params"], req["config"] or {}
         sandbox = Sandbox(**config)
 
@@ -206,9 +254,22 @@ if __name__ == "__main__":
         result = json.dumps(dataclasses.asdict(resp), ensure_ascii=False)
         w.write(str.encode(result))
         w.flush()
-        w.close()
     except Exception as e:
         print("sandbox exec error", e)
-        w.write(str.encode(json.dumps({"sandbox_error": str(e)})))
-        w.flush()
-        w.close()
+        if w is not None:
+            try:
+                w.write(str.encode(json.dumps({"sandbox_error": str(e)})))
+                w.flush()
+            except Exception:
+                pass
+    finally:
+        if r is not None:
+            try:
+                r.close()
+            except Exception:
+                pass
+        if w is not None:
+            try:
+                w.close()
+            except Exception:
+                pass

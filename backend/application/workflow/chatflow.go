@@ -470,41 +470,42 @@ func (w *ApplicationService) ListApplicationConversationDef(ctx context.Context,
 
 	return resp, nil
 }
-func checkPermission(ctx context.Context, userID int64, workflowID int64, appID *int64, agentID *int64) error {
-	rd := []*permission.ResourceIdentifier{
-		{
-			Type:   permission.ResourceTypeWorkflow,
-			ID:     []int64{workflowID},
-			Action: permission.ActionRead,
-		},
-	}
-	if appID != nil {
-		rd = append(rd, &permission.ResourceIdentifier{
-			Type:   permission.ResourceTypeApp,
-			ID:     []int64{*appID},
-			Action: permission.ActionRead,
-		})
-	}
-	if agentID != nil {
-		rd = append(rd, &permission.ResourceIdentifier{
-			Type:   permission.ResourceTypeAgent,
-			ID:     []int64{*agentID},
-			Action: permission.ActionRead,
-		})
-	}
 
-	checkResult, err := permission.DefaultSVC().CheckAuthz(ctx, &permission.CheckAuthzData{
-		OperatorID:         userID,
-		ResourceIdentifier: rd,
-	})
-	if err != nil {
-		return err
-	}
-	if checkResult.Decision != permission.Allow {
-		return errorx.New(errno.ErrMemoryPermissionCode, errorx.KV("msg", "no permission"))
-	}
-	return nil
-}
+// func checkPermission(ctx context.Context, userID int64, workflowID int64, appID *int64, agentID *int64) error {
+// 	rd := []*permission.ResourceIdentifier{
+// 		{
+// 			Type:   permission.ResourceTypeWorkflow,
+// 			ID:     []int64{workflowID},
+// 			Action: permission.ActionRead,
+// 		},
+// 	}
+// 	if appID != nil {
+// 		rd = append(rd, &permission.ResourceIdentifier{
+// 			Type:   permission.ResourceTypeApp,
+// 			ID:     []int64{*appID},
+// 			Action: permission.ActionRead,
+// 		})
+// 	}
+// 	if agentID != nil {
+// 		rd = append(rd, &permission.ResourceIdentifier{
+// 			Type:   permission.ResourceTypeAgent,
+// 			ID:     []int64{*agentID},
+// 			Action: permission.ActionRead,
+// 		})
+// 	}
+
+// 	checkResult, err := permission.DefaultSVC().CheckAuthz(ctx, &permission.CheckAuthzData{
+// 		OperatorID:         userID,
+// 		ResourceIdentifier: rd,
+// 	})
+// 	if err != nil {
+// 		return err
+// 	}
+// 	if checkResult.Decision != permission.Allow {
+// 		return errorx.New(errno.ErrMemoryPermissionCode, errorx.KV("msg", "no permission"))
+// 	}
+// 	return nil
+// }
 
 func (w *ApplicationService) OpenAPIChatFlowRun(ctx context.Context, req *workflow.ChatFlowRunRequest) (
 	_ *schema.StreamReader[[]*workflow.ChatFlowRunResponse], err error) {
@@ -562,10 +563,10 @@ func (w *ApplicationService) OpenAPIChatFlowRun(ctx context.Context, req *workfl
 		connectorID = mustParseInt64(req.GetConnectorID())
 	}
 
-	err = checkPermission(ctx, userID, workflowID, appID, agentID)
-	if err != nil {
-		return nil, err
-	}
+	// err = checkPermission(ctx, userID, workflowID, appID, agentID)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	if req.IsSetAppID() {
 		appID = ptr.Of(mustParseInt64(req.GetAppID()))

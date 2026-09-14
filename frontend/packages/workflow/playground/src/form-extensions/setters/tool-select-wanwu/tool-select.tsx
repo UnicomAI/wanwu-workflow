@@ -27,6 +27,7 @@ import { useDataSetInfos } from '@/hooks';
 import { useGlobalState } from '@/hooks';
 import { LibrarySelect } from '@/form-extensions/components/library-select-wanwu';
 import { MetadataFilterModal, DEFAULT_METADATA } from '@/form-extensions/components/dataset-select-wanwu/metadata-filter-modal-wanwu';
+import { getDefaultDatasetSetting } from '@/form-extensions/components/dataset-setting/utils';
 import { TooltipAction } from '@/form-extensions/components/icon-name-desc-card-wanwu/tooltip-action';
 import { IconNameDescCard } from '@/form-extensions/components/icon-name-desc-card-wanwu';
 
@@ -92,11 +93,17 @@ export const ToolSelect = ({
       ),
       onOk: () => {
         const currentValue = value || [];
-        onChange?.(currentValue.filter((item: any) => {
+        const nextValue = currentValue.filter((item: any) => {
           const itemId = getLibraryId(item, item.kind);
           return itemId !== id;
-        }));
+        });
+        onChange?.(nextValue);
         setLibraries((libraries || []).filter((lib: any) => lib.id !== id));
+
+        // Clear dataset setting when no knowledge base remains, allowing defaults to be re-applied on next add
+        if (form && !nextValue.some((item: any) => item.kind === TOOL_TAB.DATABASE)) {
+          form.setFieldValue('inputs.datasetSetting', {});
+        }
       },
       okText: I18n.t('workflow_confirm_modal_ok', {}, '确定'),
       cancelText: I18n.t('workflow_confirm_modal_cancel', {}, '取消'),
@@ -105,11 +112,17 @@ export const ToolSelect = ({
 
   function handleLibraryToolDelete(id: string) {
      const currentValue = value || [];
-      onChange?.(currentValue.filter((item: any) => {
+     const nextValue = currentValue.filter((item: any) => {
         const itemId = getLibraryId(item, item.kind);
         return itemId !== id;
-      }));
+      });
+      onChange?.(nextValue);
       setLibraries((libraries || []).filter((lib: any) => lib.id !== id));
+
+      // Clear dataset setting when no knowledge base remains, allowing defaults to be re-applied on next add
+      if (form && !nextValue.some((item: any) => item.kind === TOOL_TAB.DATABASE)) {
+        form.setFieldValue('inputs.datasetSetting', {});
+      }
   }
 
   function getLibraryId(itemData: any, kind: string): string {
@@ -141,10 +154,25 @@ export const ToolSelect = ({
         onChange?.([...currentValue, { ...item.data, kind: TOOL_TAB.WORKFLOW, id: libraryId, description: item.data.desc }]);
         setLibraries([...(libraries || []), { ...item.data, kind: TOOL_TAB.WORKFLOW, id: libraryId, description: item.data.desc }]);
         break;
-      case TOOL_TAB.DATABASE:
-        onChange?.([...currentValue, { ...item.data, kind: TOOL_TAB.DATABASE, id: libraryId, description: item.data.desc }]);
-        setLibraries([...(libraries || []), { ...item.data, kind: TOOL_TAB.DATABASE, id: libraryId, description: item.data.desc }]);
+      case TOOL_TAB.DATABASE: {
+        const newDatabaseItem = { ...item.data, kind: TOOL_TAB.DATABASE, id: libraryId, description: item.data.desc };
+        const nextDatabaseValue = [...currentValue, newDatabaseItem];
+        onChange?.(nextDatabaseValue);
+        setLibraries([...(libraries || []), newDatabaseItem]);
+
+        // Initialize dataset setting with default values as soon as the first knowledge base is added,
+        // so that the node already carries the full config before the user opens the setting modal.
+        if (form) {
+          const currentDatasetSetting = form.getValueIn('inputs.datasetSetting') || {};
+          const hasValidSetting = Object.values(currentDatasetSetting).some(
+            value => value !== undefined && value !== null,
+          );
+          if (!hasValidSetting) {
+            form.setFieldValue('inputs.datasetSetting', getDefaultDatasetSetting([newDatabaseItem]));
+          }
+        }
         break;
+      }
       case TOOL_TAB.MCP:
         onChange?.([...currentValue, { ...item.data, kind: TOOL_TAB.MCP, id: item.data.mcpId , description: item.data.description}]);
         setLibraries([...(libraries || []), { ...item.data, kind: TOOL_TAB.MCP, id: item.data.mcpId , description: item.data.description }]);

@@ -17,7 +17,7 @@
 /* eslint-disable complexity */
 import { type FC, useEffect, useState, useMemo } from 'react';
 
-import { isNil, set } from 'lodash-es';
+import { isNil } from 'lodash-es';
 import { useNodeTestId } from '@coze-workflow/base';
 import { type Dataset, FormatType } from '@coze-arch/idl/knowledge';
 import { I18n } from '@coze-arch/i18n';
@@ -27,20 +27,18 @@ import { Popover } from '@coze-arch/coze-design';
 import { CheckboxWithLabel } from '../checkbox-with-label';
 import { MatchType, type DataSetInfo } from './type';
 import { TitleArea, SliderArea, SearchStrategyWanwu, RerankModelWanwu } from './components';
+import {
+  SUGGEST_TOP_K,
+  DEFAULT_MIN_SCORE,
+  DEFAULT_SEMANTICS_PRIORITY,
+  DEFAULT_KEYWORD_PRIORITY,
+  DEFAULT_MAX_HISTORY,
+  DEFAULT_TOP_K,
+  DEFAULT_MATCH_TYPE,
+  getDefaultDatasetSetting,
+} from './utils';
 
 import s from './index.module.less';
-
-/** Prompt beyond this value */
-const SUGGEST_TOP_K = 5;
-/** default minimum match */
-const DEFAULT_MIN_SCORE = 0.4;
-
-const DEFAULT_SEMANTICS_PRIORITY = 0.2;
-const DEFAULT_KEYWORD_PRIORITY = 1;
-const DEFAULT_MAX_HISTORY = 0;
-/** default maximum recall  */
-const DEFAULT_TOP_K = 5;
-const DEFAULT_MATCH_TYPE = MatchType.HybirdPriority;
 
 export interface DataSetSettingProps {
   selectDataSet: any;
@@ -111,27 +109,7 @@ export const DataSetSetting: FC<DataSetSettingProps> = ({
       isNil(rerankModelId) &&
       isNil(rewrite)
     ) {
-      const initDataSetInfo = {
-        threshold: DEFAULT_MIN_SCORE,
-        topK: DEFAULT_TOP_K,
-        matchType: DEFAULT_MATCH_TYPE,
-        rerankModelId: '',
-        maxHistory: DEFAULT_MAX_HISTORY,
-        rerankKeywordPriority: DEFAULT_KEYWORD_PRIORITY,
-        semanticsPriority: DEFAULT_SEMANTICS_PRIORITY
-      };
-
-      if (isDatasetWriteActive) {
-        set(initDataSetInfo, 'rewrite', !isAllExternalKnowledge);
-      }
-
-      if (isDatasetGraphActive) {
-        set(initDataSetInfo, 'useGraph', isShowGraph);
-      }
-
-      if (!isDatasetKeywordPrioritySwitch) {
-        set(initDataSetInfo, 'rerankKeywordPrioritySwitch', false);
-      }
+      const initDataSetInfo = getDefaultDatasetSetting(selectDataSet);
 
       // The search policy for new nodes defaults to Hybird
       onDataSetInfoChange?.({

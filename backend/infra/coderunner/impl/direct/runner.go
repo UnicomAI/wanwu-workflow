@@ -21,11 +21,14 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/coze-dev/coze-studio/backend/bizpkg/fileutil"
 	"github.com/coze-dev/coze-studio/backend/infra/coderunner"
 	"github.com/coze-dev/coze-studio/backend/pkg/sonic"
+	"github.com/coze-dev/coze-studio/backend/types/consts"
 )
 
 var pythonCode = `
@@ -89,6 +92,12 @@ func (r *runner) pythonCmdRun(_ context.Context, code string, params map[string]
 	if err != nil {
 		return nil, fmt.Errorf("failed to create stdin pipe, err: %w", err)
 	}
+	// 安全加固（非 root 执行）：
+	// 1) 将代码执行子进程降权为非 root（默认 nobody），防止以容器 root 身份运行任意代码；
+	// 2) 按 CODE_RUNNER_ALLOW_ENV 白名单裁剪子进程环境变量，防止继承 JWT/DB 等敏感凭据。
+	// 仅在当前进程为 root 时才执行降权，避免非 root 容器内重复降权报错。
+	applyDropPrivileges(cmd)
+	cmd.Env = buildChildEnv()
 	if err = cmd.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start python process, err: %w", err)
 	}
@@ -109,4 +118,44 @@ func (r *runner) pythonCmdRun(_ context.Context, code string, params map[string]
 		return nil, err
 	}
 	return ret, nil
+}
+
+// buildChildEnv 构造代码执行子进程的环境变量：
+//   - 始终附带最小必需的基础变量（PATH/HOME/TMPDIR/LANG），保证 python 解释器与用户代码可正常运行；
+//   - 业务变量仅额外允许 CODE_RUNNER_ALLOW_ENV（逗号分隔的变量名）里显式白名单的项；
+//     JWT/DB 等敏感凭据不在白名单内时不会传入子进程。
+func buildChildEnv() []string {
+	envs := []string{
+		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		"HOME=/tmp",
+		"TMPDIR=/tmp",
+		"LANG=C.UTF-8",
+		"LC_ALL=C.UTF-8",
+	}
+	allow := os.Getenv(consts.CodeRunnerAllowEnv)
+	if allow == "" {
+		return envs
+	}
+	allowSet := make(map[string]struct{})
+	for _, key := range strings.Split(allow, ",") {
+		key = strings.TrimSpace(key)
+		if key != "" {
+			allowSet[key] = struct{}{}
+		}
+	}
+	for _, kv := range os.Environ() {
+		key := kv
+		if idx := strings.IndexByte(kv, '='); idx > 0 {
+			key = kv[:idx]
+		}
+		if _, ok := allowSet[key]; ok {
+			envs = append(envs, kv)
+		}
+	}
+	return envs
+}
+
+// applyDropPrivileges 让代码执行子进程以非 root 身份运行（platform-specific，见 runner_linux.go / runner_other.go）。
+func applyDropPrivileges(cmd *exec.Cmd) {
+	applyDropPrivilegesImpl(cmd)
 }

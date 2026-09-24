@@ -90,6 +90,9 @@ const (
 	CodeRunnerNodeModulesDir = "CODE_RUNNER_NODE_MODULES_DIR"
 	CodeRunnerTimeoutSeconds = "CODE_RUNNER_TIMEOUT_SECONDS"
 	CodeRunnerMemoryLimitMB  = "CODE_RUNNER_MEMORY_LIMIT_MB"
+	// 非 root 加固：代码执行子进程的运行身份（默认 nobody 65534）
+	CodeRunnerUID = "CODE_RUNNER_UID"
+	CodeRunnerGID = "CODE_RUNNER_GID"
 
 	UseSSL      = "USE_SSL"
 	SSLCertFile = "SSL_CERT_FILE"

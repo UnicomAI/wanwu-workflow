@@ -43,6 +43,7 @@ func Init() {
 	s.Use(coze_middleware.SetLogIDMW())
 	s.Use(corsHandler)
 	s.Use(coze_middleware.AccessLogMW())
+	s.Use(middleware.InternalAuth)
 	s.Use(coze_middleware.OpenapiAuthMW())
 	// s.Use(coze_middleware.SessionAuthMW())
 	s.Use(middleware.I18n)

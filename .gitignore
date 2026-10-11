@@ -37,6 +37,10 @@ output/*
 .vscode/settings.json
 .vscode/launch.json
 
+# AI
+.claude
+.omo
+
 /patches
 /oldimpl
 

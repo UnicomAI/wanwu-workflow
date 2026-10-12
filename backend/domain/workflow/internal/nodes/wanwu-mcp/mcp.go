@@ -81,7 +81,8 @@ func (c *Config) Build(_ context.Context, ns *schema.NodeSchema, _ ...schema.Bui
 	case MCPTransportStreamable:
 		serverUrl = c.StreamableUrl
 		transportType = MCPTransportStreamable
-	case MCPTransportSSE:
+	case "", MCPTransportSSE:
+		// 旧画布节点只保存 serverUrl，没有 transport 时按当时的 SSE 语义执行。
 		serverUrl = c.SseUrl
 		transportType = MCPTransportSSE
 	default:
